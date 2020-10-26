@@ -1,0 +1,29 @@
+function benefit_bio_ann = fcn_calc_benefit_bio(start_year, scheme_length, discount_constants, baseline, es_biodiversity_jncc, biodiversity_unit_value)
+
+    % Calculate the year in the 4 decades which relates to the end of the
+    % current scheme, if the scheme ends after the fourth decade set to 40
+    % and add extra annuity
+    end_year = min(40, start_year + (scheme_length - 1));
+    
+    if (end_year < 40)
+        % Return annuities in each decade as matrix
+        % !!! this is hard coded to be a 5 year scheme !!!
+        benefit_bio_ann = biodiversity_unit_value * ...
+                          [repmat(es_biodiversity_jncc.sr_100_20 - baseline.sr_100_20, 1, 5) * discount_constants.delta_scheme_length * discount_constants.gamma_10, ...
+                           zeros(size(es_biodiversity_jncc.sr_100_30)), ...
+                           zeros(size(es_biodiversity_jncc.sr_100_40)), ...
+                           zeros(size(es_biodiversity_jncc.sr_100_50))];
+    else
+        % Same as above, but use 2050's annuity for additional years
+        benefit_bio_ann = biodiversity_unit_value * ...
+                          [es_biodiversity_jncc.sr_100_20 - baseline.sr_100_20, ...
+                           es_biodiversity_jncc.sr_100_30 - baseline.sr_100_30, ...
+                           es_biodiversity_jncc.sr_100_40 - baseline.sr_100_40, ...
+                           es_biodiversity_jncc.sr_100_50 - baseline.sr_100_50, ...
+                           es_biodiversity_jncc.sr_100_50 - baseline.sr_100_50];
+    end
+    
+    % Set NaNs to zero
+    benefit_bio_ann(isnan(benefit_bio_ann)) = 0;
+    
+end
