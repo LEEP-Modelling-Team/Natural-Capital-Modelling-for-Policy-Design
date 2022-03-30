@@ -8,15 +8,23 @@
 %
 % arable_ha_cells
 %   - hectares of arable in each cell
-% data_cells
+% data_cells (of the previous year)
 %   - table of all variables needed for arable models (excluding climate) 
 %       in each cell
-% climate_cells
+%   - previous year data_cells, because this is the information available
+%   for farmer's decision making
+% climate_cells (of the previous year)
 %   - structure of rain and temperature variables in each cell
+%   - previous year data_cells, because this is the information available
+%   for farmer's land allocation
+% data_cells_current_year
+%   - Used for calculation of gross margins for the current year
 % coefficients
 %   - structure containing coefficients for arable models
 % irrigation
 %   - logical for whether irrigation is on or off
+% yield_factor
+%   - 
 %
 % OUTPUT:
 %
@@ -24,7 +32,7 @@
 %   - structure containing crop hectares, food production, profit in each 
 %       cell
 
-function arable_info = fcn_calc_arable(arable_ha_cells, data_cells, climate_cells, coefficients, irrigation)
+function arable_info = fcn_calc_arable(arable_ha_cells, data_cells, climate_cells, data_cells_current_year, coefficients, irrigation)
 
     %% Set up
     % Apply irrigation if requested
@@ -97,16 +105,31 @@ function arable_info = fcn_calc_arable(arable_ha_cells, data_cells, climate_cell
     arable_info.food = arable_info.wheat_food + arable_info.osr_food + arable_info.wbar_food + arable_info.sbar_food + arable_info.pot_food + arable_info.sb_food;
 
     % Calculate individual crop gross margin (per hectare) using Carlo's new method
-    wheat_fgm = 0.45 * data_cells.yield_wheat .* data_cells.price_wheat;
-    osr_fgm = 0.45 * data_cells.yield_osr .* data_cells.price_osr;
-    wbar_fgm = 0.45 * data_cells.yield_wbar .* data_cells.price_wbar;
-    sbar_fgm = 0.45 * data_cells.yield_sbar .* data_cells.price_sbar;
-    pot_fgm = 0.45 * data_cells.yield_pot .* data_cells.price_pot;
-    sb_fgm = 0.45 * data_cells.yield_sb .* data_cells.price_sb;
+    wheat_fgm = 0.45 * data_cells_current_year.yield_wheat .* data_cells_current_year.price_wheat;
+    osr_fgm = 0.45 * data_cells_current_year.yield_osr .* data_cells_current_year.price_osr;
+    wbar_fgm = 0.45 * data_cells_current_year.yield_wbar .* data_cells_current_year.price_wbar;
+    sbar_fgm = 0.45 * data_cells_current_year.yield_sbar .* data_cells_current_year.price_sbar;
+    pot_fgm = 0.45 * data_cells_current_year.yield_pot .* data_cells_current_year.price_pot;
+    sb_fgm = 0.45 * data_cells_current_year.yield_sb .* data_cells_current_year.price_sb;
     other_fgm = wheat_fgm; % assume other crop fgm is the same as wheat fgm
     
+    % Calculate individual crop profits
+    arable_info.wheat_profit = wheat_fgm .* arable_info.wheat_ha;
+    arable_info.osr_profit = osr_fgm .* arable_info.osr_ha;
+    arable_info.wbar_profit = wbar_fgm .* arable_info.wbar_ha;
+    arable_info.sbar_profit = sbar_fgm .* arable_info.sbar_ha;
+    arable_info.pot_profit = pot_fgm .* arable_info.pot_ha;
+    arable_info.sb_profit = sb_fgm .* arable_info.sb_ha;
+    arable_info.other_profit = other_fgm .* arable_info.other_ha;
+    
     % Total crop profit
-    arable_info.arable_profit = wheat_fgm .* arable_info.wheat_ha + osr_fgm .* arable_info.osr_ha + wbar_fgm .* arable_info.wbar_ha + sbar_fgm .* arable_info.sbar_ha + pot_fgm .* arable_info.pot_ha + sb_fgm .* arable_info.sb_ha + other_fgm .* arable_info.other_ha;
+    arable_info.arable_profit = arable_info.wheat_profit + ...
+                                arable_info.osr_profit + ...
+                                arable_info.wbar_profit + ...
+                                arable_info.sbar_profit + ...
+                                arable_info.pot_profit + ...
+                                arable_info.sb_profit + ...
+                                arable_info.other_profit;  
 
 end
 

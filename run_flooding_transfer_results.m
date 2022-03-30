@@ -15,37 +15,26 @@ num_elm_options = length(available_elm_options);
 %  ====================================
 json = ['{"id": "E92000001",'...
         '"feature_type": "integrated_countries",' ...
-        '"price_wheat": 0,' ...
-        '"price_osr": 0,' ...
-        '"price_sbar": 0,' ...
-        '"price_wbar": 0,' ...
-        '"price_pot": 0,' ...
-        '"price_sb": 0,' ...
-        '"price_other": 0,' ...
-        '"price_dairy": 0,' ...
-        '"price_beef": 0,' ...
-        '"price_sheep": 0,' ...
-        '"price_fert": 0,' ...
-        '"price_quota": 0,' ...
-        '"price_broad": 0,' ...
-        '"price_conif": 0,' ...
-        '"price_carbon": 1,' ...
-        '"discount_rate": 0,' ...
-        '"irrigation": true,' ...
         '"run_agriculture": true,' ...
         '"run_forestry": true,' ...
         '"run_recreation": true,' ...
         '"run_ghg": true,' ...
-        '"run_biodiversity": true,' ...
+        '"run_biodiversity_jncc": true,' ...
+        '"run_biodiversity_ucl": true,' ...
         '"run_water": true,' ...
-        '"run_water_non_use": true}'];
+        '"price_broad": 0,' ...
+        '"price_conif": 0,' ...
+        '"water": null}'];
+
+parameters = fcn_set_parameters();
 
 %% (1) Set up
 %  ==========
 
 % Add path to NEV model code
 % --------------------------
-addpath(genpath('C:/Users/neo204/OneDrive - University of Exeter/NEV/'))
+addpath(genpath('D:\Documents\GitHub\NEV\Models\Water Transfer\'))
+addpath(genpath('D:\Documents\GitHub\NEV\Models\Flooding Transfer\'))
 
 % Set flag for server
 % -------------------
@@ -61,11 +50,11 @@ conn = fcn_connect_database(server_flag);
 % --------------------
 % Decode JSON object/string
 % Set other default parameters
-MP = fcn_set_model_parameters(json, server_flag);
+MP = fcn_set_model_parameters(json, server_flag, parameters);
 
 % Get carbon prices
 % -----------------
-carbon_prices = fcn_get_carbon_prices(conn, MP);
+carbon_price = fcn_get_carbon_price(conn, MP.carbon_price);
 
 % Go from regional scale to 2km grid cells
 % -----------------------------------------
@@ -98,7 +87,7 @@ num_subctch_land = length(subctch_ids_land);
 
 % Determine subcatchments with IO
 % -------------------------------
-load('C:\Users\neo204\OneDrive - University of Exeter\NEV\Model Data\Water Transfer\Input Output\firstdownstream.mat')
+load(strcat(MP.water_transfer_data_folder, 'Input Output\firstdownstream.mat'))
 
 % Subcatchment IDs with input/output
 subctch_ids_io = firstdownstream.subctch_id(~strcmp('NA', firstdownstream.firstdownstream));
@@ -115,10 +104,27 @@ subctch_temp = [subctch_ids_land; subctch_ids_io];
 subctch_ids_run = subctch_temp(setdiff(1:length(subctch_temp), idx_unique));    % extract duplicates
 num_subctch_run = length(subctch_ids_run);
 
+% Reduce key_grid_subcatchments table to subctch_ids_run
+ind_subctch_run = ismember(key_grid_subcatchments.subctch_id, subctch_ids_run);
+key_grid_subcatchments_run = key_grid_subcatchments(ind_subctch_run, :);
+
 % FloodingTransfer data
 % ---------------------
 % Use event parameter = 7
-load('C:\Users\neo204\OneDrive - University of Exeter\NEV\Model Data\Flooding Transfer\NEVO_Flooding_Transfer_data_7.mat')
+load(strcat(MP.flooding_transfer_data_folder, 'NEVO_Flooding_Transfer_data_7.mat'))
+
+% Run agriculture model to have the data to calculate representative cells
+% ------------------------------------------------------------------------
+lcs_toplevel = fcn_run_agriculture(MP.agriculture_data_folder, ...
+                                     MP.climate_data_folder, ...
+                                     MP.agricultureghg_data_folder, ...
+                                     MP, ...
+                                     PV_original, ...
+                                     carbon_price(1:40));
+
+% Collect high level and agriculture output
+% -----------------------------------------
+lcs_toplevel = fcn_collect_output_simple(PV_original, lcs_toplevel);
 
 for elm_opt = 1:num_elm_options
 
@@ -130,17 +136,21 @@ for elm_opt = 1:num_elm_options
     switch elm_option
         case {'arable_reversion_sng_access', 'arable_reversion_wood_access'}
             land_type = 'arable';
+            subctch_cell_data = innerjoin(key_grid_subcatchments_run, lcs_toplevel(:, {'new2kid', 'arable_ha_20'}));
         case {'destocking_sng_access', 'destocking_wood_access'}
             land_type = 'grass';
+            subctch_cell_data = innerjoin(key_grid_subcatchments_run, lcs_toplevel(:, {'new2kid', 'grass_ha_20'}));
         otherwise
             error('Panic.')
     end
+    subctch_cell_data.Properties.VariableNames(4) = {'hectares'};
     
     % Get representative cell for each subbasin for this land type
     % ------------------------------------------------------------
     % The representative cell is that which has the most hectares of the
     % land type in the subcatchment
     % Just consider cells in England here
+    
     sqlquery = ['SELECT DISTINCT ON (tbl1.subctch_id) ' ...
                     'tbl1.subctch_id, ' ...
                     'tbl1.new2kid, ' ...
@@ -153,11 +163,23 @@ for elm_opt = 1:num_elm_options
     setdbprefs('DataReturnFormat', 'table');
     dataReturn  = fetch(exec(conn, sqlquery));
     subctch_cell = dataReturn.Data;
-    
+
     % Reduce to subcatchments with IO & land
     % --------------------------------------
     ind_run = ismember(subctch_cell.subctch_id, subctch_ids_run);
     subctch_cell = subctch_cell(ind_run, :);
+    
+    
+    subctch_rep_cell = [];
+    for i = 1:num_subctch_run
+        % Select rows for i-th subbasin
+        [ind_temp, ~] = ismember(subctch_cell_data.subctch_id, subctch_ids_run(i));
+        temp_data = subctch_cell_data(ind_temp, :);
+
+        % Retain row with largest hectare value and add to table
+        [~, max_idx] = max(temp_data.hectares);
+        subctch_rep_cell = [subctch_rep_cell; temp_data(max_idx, :)];
+    end
 
     %% (2) Implement ELM options in all cells (where possible)
     %  =======================================================
@@ -165,7 +187,7 @@ for elm_opt = 1:num_elm_options
     %% (a) Implement this ELM option
     %  -----------------------------
     % PV_updated contains the updated land covers
-    [PV_updated, elm_ha_option, scheme_length_option, site_type_option] = fcn_implement_elm_option(conn, elm_option, cell_info, PV_original);
+    [PV_updated, elm_ha_option, scheme_length_option, site_type_option] = fcn_implement_elm_option(conn, elm_option, cell_info, PV_original, MP, carbon_price);
 
     % Set up matrix of landuse hectare change (for use in forestry model)
     landuse_ha_change = [PV_updated.wood_ha - PV_original.wood_ha, ...
@@ -181,18 +203,31 @@ for elm_opt = 1:num_elm_options
     if MP.run_agriculture
         % Use fcn_run_agriculture_elms function (not NEVO function)
         % Need to pass in PV_original as farmer not allowed to optimise
-        es_agriculture = fcn_run_agriculture_elms(MP.agriculture_data_folder, MP.agricultureghg_data_folder, MP, PV_original, carbon_prices(1:40), elm_option, elm_ha_option);              
+        es_agriculture = fcn_run_agriculture_elms(MP.agriculture_data_folder, ...
+                                                  MP.climate_data_folder, ...
+                                                  MP.agricultureghg_data_folder, ...
+                                                  MP, ...
+                                                  PV_original, ...
+                                                  carbon_price(1:40), ...
+                                                  elm_option, ...
+                                                  elm_ha_option);               
     end
 
     % (ii) Forestry (+ GHG)
     if MP.run_forestry
-        es_forestry = fcn_run_forestry_elms(MP.forest_data_folder, MP.forestghg_data_folder, MP, PV_updated, landuse_ha_change, carbon_prices);
+        es_forestry = fcn_run_forestry_elms(MP.forest_data_folder, ...
+                                            MP.forestghg_data_folder, ...
+                                            MP, ...
+                                            PV_updated, ...
+                                            landuse_ha_change, ...
+                                            carbon_price, ...
+                                            elm_option);
     end
 
     % (iii) Collect output from agriculture, forestry and GHG models
     % --------------------------------------------------------------
     % Create decadal output in 2020-2029, 2030-2039, 2040-2049, 2050-2059
-    out = fcn_collect_output(MP, PV_updated, es_agriculture, es_forestry, carbon_prices);
+    out = fcn_collect_output(MP, PV_updated, es_agriculture, es_forestry, carbon_price);
 
     %% (c) Run additional models based on averaged decadal output
     %  ---------------------------------------------------------- 
@@ -200,8 +235,8 @@ for elm_opt = 1:num_elm_options
     % (i) Flooding, water quantity and water quality
     if MP.run_water
         
-        water_transfer_data_folder = 'C:\Users\neo204\OneDrive - University of Exeter\NEV\Model Data\Water Transfer\';
-        flooding_transfer_data_folder = 'C:\Users\neo204\OneDrive - University of Exeter\NEV\Model Data\Flooding Transfer\';
+        water_transfer_data_folder = MP.water_transfer_data_folder;
+        flooding_transfer_data_folder = MP.flooding_transfer_data_folder;
         
         [~, sbcell_in_allcell_idx] = ismember(subctch_cell.new2kid, cell_info.new2kid);
 
@@ -257,11 +292,10 @@ for elm_opt = 1:num_elm_options
                 % Run water transfer model to get flow time series
                 % Use other_ha_string = 'baseline' so that other_ha is split normally
                 % Also limit land cover change in subcatchment
-                [~, flow_transfer_temp] = fcn_run_water_transfer(water_transfer_data_folder, ...
+                [es_water_transfer, flow_transfer_temp] = fcn_run_water_transfer(water_transfer_data_folder, ...
                                                                  out_table(sbcell_in_allcell_idx(i),:), ...
                                                                  affected_subctch_id, ...
-                                                                 0, ...
-                                                                 0, ...
+                                                                 0, ...                                                                0, ...
                                                                  'baseline', ...
                                                                  subctch_cell.subctch_id(i));
                                                              
@@ -269,7 +303,8 @@ for elm_opt = 1:num_elm_options
                 es_flooding_transfer_temp = fcn_run_flooding_transfer(flooding_transfer_data_folder, ...
                                                                       affected_subctch_id, ...
                                                                       flow_transfer_temp, ...
-                                                                      7);
+                                                                      7, ...
+                                                                      1);
             
                 % Sum value across affected subbasins to get flood value for this cell
                 flood_result_low(i) = nansum(es_flooding_transfer_temp.flood_value_low);

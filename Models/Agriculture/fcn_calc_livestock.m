@@ -7,10 +7,10 @@
 %
 % grass_ha_cells
 %   - hectares of grass in each cell
-% data_cells
+% data_cells (of previous year)
 %   - table of all variables needed for livestock models (excluding climate) 
 %       in each cell
-% climate_cells
+% climate_cells (of previous year)
 %   - structure of rain and temperature variables in each cell
 % coefficients
 %   - structure containing coefficients for livestock models
@@ -20,11 +20,9 @@
 % livestock_info
 %   - structure containing heads of livestock and profit in each cell
 
-function livestock_info = fcn_calc_livestock(grass_ha_cells, data_cells, climate_cells, coefficients)
+function livestock_info = fcn_calc_livestock(grass_ha_cells, data_cells, climate_cells, coefficients, MP)
 
     %% Setup
-
-    % No irrigation here?
 
     % Create derived climate variables needed for livestock models
     climate_cells.sqrain = climate_cells.rain.*climate_cells.rain;
@@ -51,10 +49,25 @@ function livestock_info = fcn_calc_livestock(grass_ha_cells, data_cells, climate
     
     % Calculate individual livestock type gross margin (per head) using Carlo's new method
     dairy_fgm = 183 + 20 * data_cells.price_milk;
-    beef_fgm = 70;
-    sheep_fgm = 9;
+    if exist("MP", "var") && isfield(MP, "gm_beef") && isfield(MP, "gm_sheep")
+        beef_fgm = 70 + MP.gm_beef; 
+        sheep_fgm = 9 + MP.gm_sheep;
+    else
+        % Fallback to default values if the MP structure is not found, for
+        % backward compatibility
+        beef_fgm = 70;
+        sheep_fgm = 9;
+        warning("Beef & sheep gross margins not found in parameters struct. Falling back to default gross margins.");
+    end
+    
+    % Calculate individual livestock profits
+    livestock_info.dairy_profit = dairy_fgm .* livestock_info.dairy;
+    livestock_info.beef_profit = beef_fgm .* livestock_info.beef;
+    livestock_info.sheep_profit = sheep_fgm .* livestock_info.sheep;
     
     % Total livestock profit
-    livestock_info.livestock_profit = dairy_fgm .* livestock_info.dairy + beef_fgm * livestock_info.beef + sheep_fgm * livestock_info.sheep;
+    livestock_info.livestock_profit = livestock_info.dairy_profit + ...
+                                      livestock_info.beef_profit + ...
+                                      livestock_info.sheep_profit;
 
 end

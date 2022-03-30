@@ -20,17 +20,17 @@ function conn = fcn_connect_database(server_flag)
     else
         
         % Add class path (if not in the class path)
-        DB.p = './postgresql-42.0.0.jre7.jar'; 
+        DB.p = 'C:\Program Files\PostgreSQL\postgresql-42.2.2.jar'; 
         if ~ismember(DB.p,javaclasspath)  
            javaaddpath(DB.p)  
         end
         
         % Database connection
-        DB.datasource  = 'nathan';
+        DB.datasource  = 'nev';
         DB.username    = 'postgres';
-        DB.password    = '1234';
+        DB.password    = 'postgres';
         DB.driver      = 'org.postgresql.Driver';
-        DB.url         = 'jdbc:postgresql://localhost:5432/nathan';
+        DB.url         = 'jdbc:postgresql://localhost:5432/nev';
         conn           = database(DB.datasource,DB.username,DB.password,DB.driver,DB.url);
         
     end

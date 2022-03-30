@@ -7,7 +7,7 @@
 %
 % grass_ha_cells
 %   - hectares of grass in each cell
-% data_cells
+% data_cells (of previous years)
 %   - table of all variables needed for grass models (excluding climate) 
 %       in each cell
 % climate_cells
