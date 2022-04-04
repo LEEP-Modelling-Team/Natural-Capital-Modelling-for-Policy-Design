@@ -16,34 +16,20 @@ clear
 % (a) Define land use changes/options
 % -----------------------------------
 % (comment out as necessary)
-% options = {'arable2sng', ...
-%            'arable2wood', ...
-%            'arable2maize', ...
-%            'grass2sng', ...
-%            'grass2wood', ...
-%            'grass2maize'};
-% options = {'grass2sng', ...
-%            'grass2wood', ...
-%            'grass2maize'};
-% options = {'wood2sng', ...
-%            'wood2maize'}; 
- options = {'wood2sng_neg', ...
-            'wood2maize_neg', ...
-            'arable2maize_neg', ...
-            'grass2maize_neg'};
+options = {'arable2sng', ...
+           'arable2wood', ...
+           'grass2sng', ...
+           'grass2wood'};
 
 num_options = length(options);
 
 % (b) Connect to database
 % -----------------------
-NEV_code_path = 'D:/myGitHub/NEV/';
-NEV_data_path = 'D:/mydata/Research/Projects (Land Use)/NEV/';
-
-addpath(genpath(NEV_code_path))
+addpath(genpath('D:/Documents/Github/NEV/'))
+NEV_data_path = 'D:/Documents/NEV/Model Data/';
 
 server_flag = false;
 conn = fcn_connect_database(server_flag);
-
 
 % (c) Load key_grid_subcatchments
 % -------------------------------
@@ -52,7 +38,7 @@ conn = fcn_connect_database(server_flag);
 % (d) Path to water transfer model data
 % -------------------------------------
 % water_transfer_data_folder = 'C:\Users\neo204\OneDrive - University of Exeter\NEV\Model Data\Water Transfer\';
-water_transfer_data_folder    = 'D:/mydata/Research/Projects (Land Use)/NEV/Model Data/Water Transfer/';
+water_transfer_data_folder    = 'D:/Documents/NEV/Model Data/Water Transfer/';
 load([water_transfer_data_folder, 'NEVO_Water_Transfer_data.mat'], 'base_lcs_subctch_cells')
 
 key_grid_subcatchments = base_lcs_subctch_cells(:, {'subctch_id', 'new2kid', 'proportion'});
@@ -86,10 +72,6 @@ for i = 1:num_options
             load('MAT Files/lcs_arable2wood', 'lcs_arable2wood')
             lcs_option_i = lcs_arable2wood;
             clear lcs_arable2wood
-        case {'arable2maize', 'arable2maize_neg'}
-            load('MAT Files/lcs_arable2maize', 'lcs_arable2maize')
-            lcs_option_i = lcs_arable2maize;
-            clear lcs_arable2maize
         case 'grass2sng'
             load('MAT Files/lcs_grass2sng', 'lcs_grass2sng')
             lcs_option_i = lcs_grass2sng;
@@ -98,18 +80,6 @@ for i = 1:num_options
             load('MAT Files/lcs_grass2wood', 'lcs_grass2wood')
             lcs_option_i = lcs_grass2wood;
             clear lcs_grass2wood
-        case {'grass2maize', 'grass2maize_neg'}
-            load('MAT Files/lcs_grass2maize', 'lcs_grass2maize')
-            lcs_option_i = lcs_grass2maize;
-            clear lcs_grass2maize
-        case {'wood2sng', 'wood2sng_neg'}
-            load('MAT Files/lcs_wood2sng', 'lcs_wood2sng')
-            lcs_option_i = lcs_wood2sng;
-            clear lcs_wood2sng
-        case {'wood2maize', 'wood2maize_neg'}
-            load('MAT Files/lcs_wood2maize', 'lcs_wood2maize')
-            lcs_option_i = lcs_wood2maize;
-            clear lcs_wood2maize
         otherwise
             error('Option not found!')
     end
@@ -133,10 +103,6 @@ for i = 1:num_options
             load('MAT Files/water_arable2wood', 'water_arable2wood')
             water_option_i = water_arable2wood;
             clear water_arable2wood
-        case 'arable2maize'
-            load('MAT Files/water_arable2maize', 'water_arable2maize')
-            water_option_i = water_arable2maize;
-            clear water_arable2maize
         case 'grass2sng'
             load('MAT Files/water_grass2sng', 'water_grass2sng')
             water_option_i = water_grass2sng;
@@ -145,34 +111,6 @@ for i = 1:num_options
             load('MAT Files/water_grass2wood', 'water_grass2wood')
             water_option_i = water_grass2wood;
             clear water_grass2wood
-        case 'grass2maize'
-            load('MAT Files/water_grass2maize', 'water_grass2maize')
-            water_option_i = water_grass2maize;
-            clear water_grass2maize
-        case 'wood2sng'
-            load('MAT Files/water_wood2sng', 'water_wood2sng')
-            water_option_i = water_wood2sng;
-            clear water_wood2sng
-        case 'wood2maize'
-            load('MAT Files/water_wood2maize', 'water_wood2maize')
-            water_option_i = water_wood2maize;
-            clear water_wood2maize
-        case 'arable2maize_neg'
-            load('MAT Files/water_arable2maize_neg', 'water_arable2maize')
-            water_option_i = water_arable2maize;
-            clear water_arable2maize
-        case 'grass2maize_neg'
-            load('MAT Files/water_grass2maize_neg', 'water_grass2maize')
-            water_option_i = water_grass2maize;
-            clear water_grass2maize
-        case 'wood2sng_neg'
-            load('MAT Files/water_wood2sng_neg', 'water_wood2sng')
-            water_option_i = water_wood2sng;
-            clear water_wood2sng
-        case 'wood2maize_neg'
-            load('MAT Files/water_wood2maize_neg', 'water_wood2maize')
-            water_option_i = water_wood2maize;
-            clear water_wood2maize                 
     end
     
     % (d) Get crossover between subctch_cell_data table and representative cell subctch ids
@@ -323,10 +261,6 @@ for i = 1:num_options
             water_cell_arable2wood = water_cell_option_i;
             save('MAT Files/water_cell_arable2wood.mat', 'water_cell_arable2wood');
             clear water_cell_option_i
-        case 'arable2maize'
-            water_cell_arable2maize = water_cell_option_i;
-            save('MAT Files/water_cell_arable2maize.mat', 'water_cell_arable2maize');
-            clear water_cell_option_i
         case 'grass2sng'
             water_cell_grass2sng = water_cell_option_i;
             save('MAT Files/water_cell_grass2sng.mat', 'water_cell_grass2sng');
@@ -334,35 +268,6 @@ for i = 1:num_options
         case 'grass2wood'
             water_cell_grass2wood = water_cell_option_i;
             save('MAT Files/water_cell_grass2wood.mat', 'water_cell_grass2wood');
-            clear water_cell_option_i
-        case 'grass2maize'
-            water_cell_grass2maize = water_cell_option_i;
-            save('MAT Files/water_cell_grass2maize.mat', 'water_cell_grass2maize');
-            clear water_cell_option_i
-        case 'wood2sng'
-            water_cell_wood2sng = water_cell_option_i;
-            save('MAT Files/water_cell_wood2sng.mat', 'water_cell_wood2sng');
-            clear water_cell_option_i
-        case 'wood2maize'
-            water_cell_wood2maize = water_cell_option_i;
-            save('MAT Files/water_cell_wood2maize.mat', 'water_cell_wood2maize');
-            clear water_cell_option_i  
-        case 'arable2maize_neg'
-            water_cell_arable2maize = water_cell_option_i;
-            save('MAT Files/water_cell_arable2maize_neg.mat', 'water_cell_arable2maize');
-            clear water_cell_option_i
-        case 'grass2maize_neg'
-            water_cell_grass2maize = water_cell_option_i;
-            save('MAT Files/water_cell_grass2maize_neg.mat', 'water_cell_grass2maize');
-            clear water_cell_option_i
-        case 'wood2sng_neg'
-            water_cell_wood2sng = water_cell_option_i;
-            save('MAT Files/water_cell_wood2sng_neg.mat', 'water_cell_wood2sng');
-            clear water_cell_option_i
-        case 'wood2maize_neg'
-            water_cell_wood2maize = water_cell_option_i;
-            save('MAT Files/water_cell_wood2maize_neg.mat', 'water_cell_wood2maize');
-            clear water_cell_option_i                
-    end    
-    
+            clear water_cell_option_i   
+    end 
 end

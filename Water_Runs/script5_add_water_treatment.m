@@ -11,27 +11,17 @@ clear
 % (a) Define land use changes/options
 % -----------------------------------
 % (comment out as necessary)
-% options = {'arable2sng', ...
-%            'arable2wood', ...
-%            'arable2maize', ...
-%            'grass2sng', ...
-%            'grass2wood', ...
-%            'grass2maize'};
-% options = {'wood2sng', ...
-%            'wood2maize'};  
- options = {'wood2sng_neg', ...
-            'wood2maize_neg', ...
-            'arable2maize_neg', ...
-            'grass2maize_neg'};
-
+options = {'arable2sng', ...
+           'arable2wood', ...
+           'grass2sng', ...
+           'grass2wood'};
+       
 num_options = length(options);
 
 % (b) Connect to database
 % -----------------------
-NEV_code_path = 'D:/myGitHub/NEV/';
-NEV_data_path = 'D:/mydata/Research/Projects (Land Use)/NEV/';
-
-addpath(genpath(NEV_code_path))
+addpath(genpath('D:/Documents/Github/NEV/'))
+NEV_data_path = 'D:/Documents/NEV/Model Data/';
 
 server_flag = false;
 conn = fcn_connect_database(server_flag);
@@ -69,10 +59,6 @@ for i = 1:num_options
             load('MAT Files/water_arable2wood', 'water_arable2wood')
             water_option_i = water_arable2wood;
             clear water_arable2wood
-        case 'arable2maize'
-            load('MAT Files/water_arable2maize', 'water_arable2maize')
-            water_option_i = water_arable2maize;
-            clear water_arable2maize
         case 'grass2sng'
             load('MAT Files/water_grass2sng', 'water_grass2sng')
             water_option_i = water_grass2sng;
@@ -80,35 +66,7 @@ for i = 1:num_options
         case 'grass2wood'
             load('MAT Files/water_grass2wood', 'water_grass2wood')
             water_option_i = water_grass2wood;
-            clear water_grass2wood
-        case 'grass2maize'
-            load('MAT Files/water_grass2maize', 'water_grass2maize')
-            water_option_i = water_grass2maize;
-            clear water_grass2maize
-        case 'wood2sng'
-            load('MAT Files/water_wood2sng', 'water_wood2sng')
-            water_option_i = water_wood2sng;
-            clear water_wood2sng
-        case 'wood2maize'
-            load('MAT Files/water_wood2maize', 'water_wood2maize')
-            water_option_i = water_wood2maize;
-            clear water_wood2maize
-        case 'arable2maize_neg'
-            load('MAT Files/water_arable2maize_neg', 'water_arable2maize')
-            water_option_i = water_arable2maize;
-            clear water_arable2maize
-        case 'grass2maize_neg'
-            load('MAT Files/water_grass2maize_neg', 'water_grass2maize')
-            water_option_i = water_grass2maize;
-            clear water_grass2maize
-        case 'wood2sng_neg'
-            load('MAT Files/water_wood2sng_neg', 'water_wood2sng')
-            water_option_i = water_wood2sng;
-            clear water_wood2sng
-        case 'wood2maize_neg'
-            load('MAT Files/water_wood2maize_neg', 'water_wood2maize')
-            water_option_i = water_wood2maize;
-            clear water_wood2maize            
+            clear water_grass2wood       
     end
     
     % (b) Check if non use value has already been calculated
@@ -190,10 +148,6 @@ for i = 1:num_options
                 water_arable2wood = water_option_i;
                 save('MAT Files/water_arable2wood.mat', 'water_arable2wood');
                 clear water_option_i
-            case 'arable2maize'
-                water_arable2maize = water_option_i;
-                save('MAT Files/water_arable2maize.mat', 'water_arable2maize');
-                clear water_option_i
             case 'grass2sng'
                 water_grass2sng = water_option_i;
                 save('MAT Files/water_grass2sng.mat', 'water_grass2sng');
@@ -201,35 +155,7 @@ for i = 1:num_options
             case 'grass2wood'
                 water_grass2wood = water_option_i;
                 save('MAT Files/water_grass2wood.mat', 'water_grass2wood');
-                clear water_option_i
-            case 'grass2maize'
-                water_grass2maize = water_option_i;
-                save('MAT Files/water_grass2maize.mat', 'water_grass2maize');
-                clear water_option_i
-            case 'wood2sng'
-                water_wood2sng = water_option_i;
-                save('MAT Files/water_wood2sng.mat', 'water_wood2sng');
-                clear water_option_i
-            case 'wood2maize'
-                water_wood2maize = water_option_i;
-                save('MAT Files/water_wood2maize.mat', 'water_wood2maize');
-                clear water_option_i    
-            case 'arable2maize_neg'
-                water_arable2maize = water_option_i;
-                save('MAT Files/water_arable2maize_neg.mat', 'water_arable2maize');
-                clear water_option_i
-            case 'grass2maize_neg'
-                water_grass2maize = water_option_i;
-                save('MAT Files/water_grass2maize_neg.mat', 'water_grass2maize');
-                clear water_option_i
-            case 'wood2sng_neg'
-                water_wood2sng = water_option_i;
-                save('MAT Files/water_wood2sng_neg.mat', 'water_wood2sng');
-                clear water_option_i
-            case 'wood2maize_neg'
-                water_wood2maize = water_option_i;
-                save('MAT Files/water_wood2maize_neg.mat', 'water_wood2maize');
-                clear water_option_i                     
+                clear water_option_i             
         end
     else
         disp('Water treatment value already added for this land cover change, skipping...')
