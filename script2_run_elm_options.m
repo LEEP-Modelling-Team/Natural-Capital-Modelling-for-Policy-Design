@@ -126,19 +126,19 @@ load(['Script 1 (Baseline Runs)/baseline_results_', carbon_price_string, '.mat']
 % Define set of ELM options
 % -------------------------
 % Must run in this order for correct recreation benefit calculation
-% available_elm_options = {'arable_reversion_sng_access', ...     % arable reversion to semi-natural with recreation access
-%                          'destocking_sng_access', ...           % destocking to semi-natural with recreation access
-%                          'arable_reversion_wood_access', ...    % arable reversion to woodland with recreation access
-%                          'destocking_wood_access', ...          % destocking to woodland with recreation access
-%                          'arable_reversion_sng_noaccess', ...   % arable reversion to semi-natural with no recreation access
-%                          'destocking_sng_noaccess', ...         % destocking to semi-natural with no recreation access
-%                          'arable_reversion_wood_noaccess', ...  % arable reversion to woodland with no recreation access
-%                          'destocking_wood_noaccess'};           % destocking to woodland with no recreation access
-                     
 available_elm_options = {'arable_reversion_sng_access', ...     % arable reversion to semi-natural with recreation access
                          'destocking_sng_access', ...           % destocking to semi-natural with recreation access
                          'arable_reversion_wood_access', ...    % arable reversion to woodland with recreation access
-                         'destocking_wood_access'};             % destocking to woodland with recreation access
+                         'destocking_wood_access', ...          % destocking to woodland with recreation access
+                         'arable_reversion_sng_noaccess', ...   % arable reversion to semi-natural with no recreation access
+                         'destocking_sng_noaccess', ...         % destocking to semi-natural with no recreation access
+                         'arable_reversion_wood_noaccess', ...  % arable reversion to woodland with no recreation access
+                         'destocking_wood_noaccess'};           % destocking to woodland with no recreation access
+                     
+% available_elm_options = {'arable_reversion_sng_access', ...     % arable reversion to semi-natural with recreation access
+%                          'destocking_sng_access', ...           % destocking to semi-natural with recreation access
+%                          'arable_reversion_wood_access', ...    % arable reversion to woodland with recreation access
+%                          'destocking_wood_access'};             % destocking to woodland with recreation access
 
 num_elm_options = length(available_elm_options);
 
@@ -437,59 +437,59 @@ for option_i = 1:num_elm_options
     end
 end
 
-%% (3) Construct combinations of ELMs options
-%  ==========================================
-% Construct feasible combinations and give them a name
-% ----------------------------------------------------
-combo_matrix = [1, 1, 0, 0, 0, 0, 0, 0; ...
-				1, 0, 1, 0, 0, 0, 0, 0; ...
-				0, 0, 1, 1, 0, 0, 0, 0; ...
-				0, 1, 0, 1, 0, 0, 0, 0; ...
-				0, 0, 0, 0, 1, 1, 0, 0; ...
-				0, 0, 0, 0, 1, 0, 1, 0; ...
-				0, 0, 0, 0, 0, 0, 1, 1; ...
-				0, 0, 0, 0, 0, 1, 0, 1];
-elm_combos = {'ar_sng_d_sng', 'ar_sng_d_w', 'ar_w_d_sng', 'ar_w_d_w','ar_sng_d_sng_na', 'ar_sng_d_w_na', 'ar_w_d_sng_na', 'ar_w_d_w_na'};
-num_elm_combos = length(elm_combos);
-
-% Combine benefits, costs, outcomes etc for combinations
-% ------------------------------------------------------
-for i = 1:num_elm_combos
-    % Get strings of two individual options for this combo
-	% Use strings to extract correct fields from structures
-    combo_two_options = available_elm_options(combo_matrix(:,i)==1);
-    
-    % Add ELM hectares
-    elm_ha.(elm_combos{i}) = elm_ha.(combo_two_options{1}) + elm_ha.(combo_two_options{2});
-    
-    % Add benefits
-    benefits.(elm_combos{i}) = benefits.(combo_two_options{1}) + benefits.(combo_two_options{2});
-    
-    % Add benefits in table
-    benefits_table.(elm_combos{i}) = benefits_table.(combo_two_options{1}) + benefits_table.(combo_two_options{2});
-    
-    % Add costs
-    costs.(elm_combos{i}) = costs.(combo_two_options{1}) + costs.(combo_two_options{2});
-    
-    % Add costs in table
-    costs_table.(elm_combos{i}) = costs_table.(combo_two_options{1}) + costs_table.(combo_two_options{2});
-    
-    % Add environmental outcomes (but take maximum of biodiversity score)
-    %% !!! assumes biodiversity is final column !!!
-	max_biodiversity = max(env_outs.(combo_two_options{1})(:, end, :), env_outs.(combo_two_options{2})(:, end, :));
-    env_outs.(elm_combos{i}) = [env_outs.(combo_two_options{1})(:, 1:(end - 1), :) + env_outs.(combo_two_options{2})(:, 1:(end - 1), :), max_biodiversity];
-    
-    % Add ecosystem service outcomes (but take maximum of biodiversity value)
-    %% !!! assumes biodiversity is final column !!!
-	max_biodiversity_value = max(es_outs.(combo_two_options{1})(:, end, :), es_outs.(combo_two_options{2})(:, end, :));
-    es_outs.(elm_combos{i}) = [es_outs.(combo_two_options{1})(:, 1:(end - 1), :) + es_outs.(combo_two_options{2})(:, 1:(end - 1),:), max_biodiversity_value];
-    
-    % Calculate benefit cost ratios
-    benefit_cost_ratios.(elm_combos{i}) = benefits.(elm_combos{i}) ./ costs.(elm_combos{i});
-end 
-
-% Finally, add combo names to available elm options
-available_elm_options = [available_elm_options, elm_combos];
+% %% (3) Construct combinations of ELMs options
+% %  ==========================================
+% % Construct feasible combinations and give them a name
+% % ----------------------------------------------------
+% combo_matrix = [1, 1, 0, 0, 0, 0, 0, 0; ...
+% 				1, 0, 1, 0, 0, 0, 0, 0; ...
+% 				0, 0, 1, 1, 0, 0, 0, 0; ...
+% 				0, 1, 0, 1, 0, 0, 0, 0; ...
+% 				0, 0, 0, 0, 1, 1, 0, 0; ...
+% 				0, 0, 0, 0, 1, 0, 1, 0; ...
+% 				0, 0, 0, 0, 0, 0, 1, 1; ...
+% 				0, 0, 0, 0, 0, 1, 0, 1];
+% elm_combos = {'ar_sng_d_sng', 'ar_sng_d_w', 'ar_w_d_sng', 'ar_w_d_w','ar_sng_d_sng_na', 'ar_sng_d_w_na', 'ar_w_d_sng_na', 'ar_w_d_w_na'};
+% num_elm_combos = length(elm_combos);
+% 
+% % Combine benefits, costs, outcomes etc for combinations
+% % ------------------------------------------------------
+% for i = 1:num_elm_combos
+%     % Get strings of two individual options for this combo
+% 	% Use strings to extract correct fields from structures
+%     combo_two_options = available_elm_options(combo_matrix(:,i)==1);
+%     
+%     % Add ELM hectares
+%     elm_ha.(elm_combos{i}) = elm_ha.(combo_two_options{1}) + elm_ha.(combo_two_options{2});
+%     
+%     % Add benefits
+%     benefits.(elm_combos{i}) = benefits.(combo_two_options{1}) + benefits.(combo_two_options{2});
+%     
+%     % Add benefits in table
+%     benefits_table.(elm_combos{i}) = benefits_table.(combo_two_options{1}) + benefits_table.(combo_two_options{2});
+%     
+%     % Add costs
+%     costs.(elm_combos{i}) = costs.(combo_two_options{1}) + costs.(combo_two_options{2});
+%     
+%     % Add costs in table
+%     costs_table.(elm_combos{i}) = costs_table.(combo_two_options{1}) + costs_table.(combo_two_options{2});
+%     
+%     % Add environmental outcomes (but take maximum of biodiversity score)
+%     %% !!! assumes biodiversity is final column !!!
+% 	max_biodiversity = max(env_outs.(combo_two_options{1})(:, end, :), env_outs.(combo_two_options{2})(:, end, :));
+%     env_outs.(elm_combos{i}) = [env_outs.(combo_two_options{1})(:, 1:(end - 1), :) + env_outs.(combo_two_options{2})(:, 1:(end - 1), :), max_biodiversity];
+%     
+%     % Add ecosystem service outcomes (but take maximum of biodiversity value)
+%     %% !!! assumes biodiversity is final column !!!
+% 	max_biodiversity_value = max(es_outs.(combo_two_options{1})(:, end, :), es_outs.(combo_two_options{2})(:, end, :));
+%     es_outs.(elm_combos{i}) = [es_outs.(combo_two_options{1})(:, 1:(end - 1), :) + es_outs.(combo_two_options{2})(:, 1:(end - 1),:), max_biodiversity_value];
+%     
+%     % Calculate benefit cost ratios
+%     benefit_cost_ratios.(elm_combos{i}) = benefits.(elm_combos{i}) ./ costs.(elm_combos{i});
+% end 
+% 
+% % Finally, add combo names to available elm options
+% available_elm_options = [available_elm_options, elm_combos];
 
 %% (4) Set maximum unit values for environmental outcome flat rates
 %  ================================================================
