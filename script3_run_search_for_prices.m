@@ -21,9 +21,9 @@ markup = 1.15;
 
 % Carbon price
 % carbon_price_string = 'scc';
-% carbon_price_string = 'nontraded_low';
-carbon_price_string = 'nontraded_central';
-% carbon_price_string = 'nontraded_high';
+% carbon_price_string = 'non_trade_low';
+carbon_price_string = 'non_trade_central';
+% carbon_price_string = 'non_trade_high';
 
 % Load ELM option results from .mat file
 % --------------------------------------

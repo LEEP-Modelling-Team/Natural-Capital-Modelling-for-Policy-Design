@@ -66,7 +66,7 @@ function flooding_transfer_table = fcn_run_flooding_transfer_from_results(cell_i
     nfm_data = nfm_data(nfm_idx, :);
     
     % Adjust hectares for NFM based on available hectares under ELM option
-    nfm_ha_adjusted = nfm_data.nfm_ha;
+    nfm_ha_adjusted = nfm_data.nfm_area_ha;
     
     % these areas are not suitable for NFM, set to zero
     nfm_ha_adjusted(isnan(nfm_ha_adjusted)) = 0;

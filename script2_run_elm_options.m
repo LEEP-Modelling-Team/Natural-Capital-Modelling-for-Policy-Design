@@ -7,9 +7,8 @@ clear
 
 % Set carbon price
 % carbon_price_string = 'scc';
-% carbon_price_string = 'non_traded_low';
-% carbon_price_string = 'non_traded_central';
-carbon_price_string = MP.carbon_price;
+% carbon_price_string = 'non_trade_low';
+carbon_price_string = 'non_trade_central';
 
 % Set proportion of non use values to take
 % non_use_proportion = 1e-4;
@@ -53,11 +52,15 @@ json = ['{"id": "E92000001",'...
         '"run_biodiversity_jncc": true,' ...
         '"run_biodiversity_ucl": true,' ...
         '"run_water": true,' ...
+        '"run_pollination": true,' ...
+        '"run_non_use_pollination": true,' ...
+        '"run_non_use_habitat": true,' ...
         '"price_broad": 0,' ...
         '"price_conif": 0,' ...
         '"water": null}'];
 
 parameters = fcn_set_parameters();
+parameters.carbon_price = carbon_price_string;
 
 %% (1) Set up
 %  ==========
@@ -103,14 +106,18 @@ load(['Script 1 (Baseline Runs)/baseline_results_', carbon_price_string, '.mat']
 
 % Load water results and related information
 % ------------------------------------------
-% Water quality (created in run_water_quality_results)
-[water_quality_results, water_quality_cell2sbsn] = fcn_import_water_quality_info(conn);
+% % Water quality (created in run_water_quality_results)
+% [water_quality_results, water_quality_cell2sbsn] = fcn_import_water_quality_info(conn);
+% 
+% % Water quality non use (created in run_water_results.m script)
+% [water_non_use_results, water_non_use_cell2sbsn] = fcn_import_water_non_use_info(conn);
 
-% Water quality non use (created in run_water_results.m script)
-[water_non_use_results, water_non_use_cell2sbsn] = fcn_import_water_non_use_info(conn);
+% Water transfer results, including water quality, non-use and flooding
+% (created running scripts 1 to 6 in Water_Runs)
+[water_transfer_results, water_transfer_cell2subctch, nfm_data] = fcn_import_water_transfer_info(conn);
 
-% Flooding (created in run_flooding_transfer_results.m script)
-[flooding_results_transfer, flooding_cell2subctch, nfm_data] = fcn_import_flooding_transfer_info(conn);
+% % Flooding (created in run_flooding_transfer_results.m script)
+% [flooding_results_transfer, flooding_cell2subctch, nfm_data] = fcn_import_flooding_transfer_info(conn);
 
 %% (2) Implement all ELM options for all farmers
 %  =============================================
@@ -119,14 +126,20 @@ load(['Script 1 (Baseline Runs)/baseline_results_', carbon_price_string, '.mat']
 % Define set of ELM options
 % -------------------------
 % Must run in this order for correct recreation benefit calculation
+% available_elm_options = {'arable_reversion_sng_access', ...     % arable reversion to semi-natural with recreation access
+%                          'destocking_sng_access', ...           % destocking to semi-natural with recreation access
+%                          'arable_reversion_wood_access', ...    % arable reversion to woodland with recreation access
+%                          'destocking_wood_access', ...          % destocking to woodland with recreation access
+%                          'arable_reversion_sng_noaccess', ...   % arable reversion to semi-natural with no recreation access
+%                          'destocking_sng_noaccess', ...         % destocking to semi-natural with no recreation access
+%                          'arable_reversion_wood_noaccess', ...  % arable reversion to woodland with no recreation access
+%                          'destocking_wood_noaccess'};           % destocking to woodland with no recreation access
+                     
 available_elm_options = {'arable_reversion_sng_access', ...     % arable reversion to semi-natural with recreation access
                          'destocking_sng_access', ...           % destocking to semi-natural with recreation access
                          'arable_reversion_wood_access', ...    % arable reversion to woodland with recreation access
-                         'destocking_wood_access', ...          % destocking to woodland with recreation access
-                         'arable_reversion_sng_noaccess', ...   % arable reversion to semi-natural with no recreation access
-                         'destocking_sng_noaccess', ...         % destocking to semi-natural with no recreation access
-                         'arable_reversion_wood_noaccess', ...  % arable reversion to woodland with no recreation access
-                         'destocking_wood_noaccess'};           % destocking to woodland with no recreation access
+                         'destocking_wood_access'};             % destocking to woodland with recreation access
+
 num_elm_options = length(available_elm_options);
 
 % Define number of benefits in simulation
@@ -192,7 +205,9 @@ for option_i = 1:num_elm_options
         site_type_option] = fcn_implement_elm_option(conn, ...
                                                      elm_option, ...
                                                      cell_info, ...
-                                                     PV_original);
+                                                     PV_original, ...
+                                                     MP, ...
+                                                     carbon_price(1:40));
     
     % Save ELM hectares to elm_ha table
     elm_ha.(elm_option) = elm_ha_option;
@@ -212,6 +227,7 @@ for option_i = 1:num_elm_options
         % Use fcn_run_agriculture_elms function (not NEVO function)
         % Need to pass in PV_original as farmer not allowed to reoptimise
         es_agriculture = fcn_run_agriculture_elms(MP.agriculture_data_folder, ...
+                                                  MP.climate_data_folder, ...
                                                   MP.agricultureghg_data_folder, ...
                                                   MP, ...
                                                   PV_original, ...
@@ -264,12 +280,12 @@ for option_i = 1:num_elm_options
 	% -----------------
     % JNCC
     if MP.run_biodiversity_jncc
-        es_biodiversity_jncc = fcn_run_biodiversity_jncc(MP.biodiversity_jncc_data_folder, PV_updated, out);
+        es_biodiversity_jncc = fcn_run_biodiversity_jncc(MP.biodiversity_data_folder_jncc, PV_updated, out);
     end
     
     % UCL
     if MP.run_biodiversity_ucl
-        es_biodiversity_ucl = fcn_run_biodiversity_ucl_old(MP.biodiversity_ucl_data_folder, out, 'rcp60', 'baseline');
+        es_biodiversity_ucl = fcn_run_biodiversity_ucl_old(MP.biodiversity_data_folder, out, 'rcp60', 'baseline');
     end
     
     % (iii) Pollination
@@ -304,18 +320,24 @@ for option_i = 1:num_elm_options
     % (vi) Flooding, Water Quality Non-Use & Water Quantities
 	% -------------------------------------------------------
     if MP.run_water
-        % Water quality
-        water_quality_table = fcn_run_water_quality_from_results(cell_info, elm_option, elm_ha_option, water_quality_results, water_quality_cell2sbsn);
+%         % Water quality
+%         water_quality_table = fcn_run_water_quality_from_results(cell_info, elm_option, elm_ha_option, water_quality_results, water_quality_cell2sbsn);
+%         
+%         % Water quality non use
+%         water_non_use_table = fcn_run_water_non_use_from_results(cell_info, elm_option, elm_ha_option, water_non_use_results, water_non_use_cell2sbsn, non_use_proportion);
+%         
+        % Water quality transfer table
+        water_quality_transfer_table = fcn_run_water_quality_transfer_from_results(cell_info, elm_option, elm_ha_option, water_transfer_results, water_transfer_cell2subctch);
         
-        % Water quality non use
-        water_non_use_table = fcn_run_water_non_use_from_results(cell_info, elm_option, elm_ha_option, water_non_use_results, water_non_use_cell2sbsn, non_use_proportion);
+        % Water quality transfer non use table
+        water_non_use_transfer_table = fcn_run_water_transfer_non_use_from_results(cell_info, elm_option, elm_ha_option, water_transfer_results, water_transfer_cell2subctch, non_use_proportion);
         
         % Flooding
-        flooding_transfer_table = fcn_run_flooding_transfer_from_results(cell_info, elm_option, elm_ha_option, flooding_results_transfer, flooding_cell2subctch, nfm_data, assumption_flooding);
+        flooding_transfer_table = fcn_run_flooding_transfer_from_results(cell_info, elm_option, elm_ha_option, water_transfer_results, water_transfer_cell2subctch, nfm_data, assumption_flooding);
         
         % !!! temporary: move chgq5 from non use to flooding
-        flooding_transfer_table = [flooding_transfer_table, water_non_use_table(:, {'chgq5_20', 'chgq5_30', 'chgq5_40', 'chgq5_50'})];
-        water_non_use_table = water_non_use_table(:, {'new2kid', 'non_use_value_20', 'non_use_value_30', 'non_use_value_40', 'non_use_value_50'});
+        flooding_transfer_table = [flooding_transfer_table, water_non_use_transfer_table(:, {'chgq5_20', 'chgq5_30', 'chgq5_40', 'chgq5_50'})];
+        water_non_use_transfer_table = water_non_use_transfer_table(:, {'new2kid', 'non_use_value_20', 'non_use_value_30', 'non_use_value_40', 'non_use_value_50'});
     end    
 
     %% (d) Calculate benefits, opportunity cost and benefit cost ratio in 5 year loop
@@ -336,8 +358,8 @@ for option_i = 1:num_elm_options
                                                                       es_agriculture, ...
                                                                       es_forestry, ...
                                                                       out, ...
-                                                                      water_quality_table, ...
-                                                                      water_non_use_table, ...
+                                                                      water_quality_transfer_table, ...
+                                                                      water_non_use_transfer_table, ...
                                                                       flooding_transfer_table, ...
                                                                       es_pollination, ...
                                                                       es_non_use_pollination, ...
@@ -378,7 +400,7 @@ for option_i = 1:num_elm_options
                                                out, ...
                                                elm_option, ...
                                                elm_ha_option, ...
-                                               water_quality_table, ...
+                                               water_quality_transfer_table, ...
                                                flooding_transfer_table, ...
                                                es_biodiversity_jncc, ...
                                                es_biodiversity_ucl);

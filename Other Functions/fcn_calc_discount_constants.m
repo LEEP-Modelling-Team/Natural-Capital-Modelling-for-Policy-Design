@@ -21,4 +21,3 @@ function discount_constants = fcn_calc_discount_constants(discount_rate)
     discount_constants.gamma_40 = discount_rate / (1 - (1 + discount_rate) ^ (-40));
     
 end
-
