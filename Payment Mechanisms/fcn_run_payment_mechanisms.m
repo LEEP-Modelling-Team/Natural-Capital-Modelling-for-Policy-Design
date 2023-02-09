@@ -85,9 +85,9 @@ function [chosen_option_ind, ...
         case 'fr_act'
             % Load prices (generated in script3a_run_search_for_prices)
             if remove_nu_habitat
-                load(['./Script 3 (Optimised Prices)/prices_fr_act_', budget_char, '_search_no_nu_habitat_', carbon_price_string, '.mat'], 'prices')
+                load(['./Script 3 (Optimised Prices)/prices_fr_act_', budget_char, '_lp_no_nu_habitat_', carbon_price_string, '.mat'], 'prices')
             else
-                load(['./Script 3 (Optimised Prices)/prices_fr_act_', budget_char, '_search_', carbon_price_string, '.mat'], 'prices')
+                load(['./Script 3 (Optimised Prices)/prices_fr_act_', budget_char, '_lp_', carbon_price_string, '.mat'], 'prices')
             end
             flat_rates = prices;
             % Discount prices based on scheme year

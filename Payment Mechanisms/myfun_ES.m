@@ -5,9 +5,17 @@ function f = myfun_ES(p, ES, C, B, elm_option)
     benefit = zeros(length(C), length(elm_option) + 1);
     
     % Evaluate profit & cost for each option 
-    for i = 1:length(elm_option)
-        profit(:, i + 1)  = p * ES.(elm_option{i})' - C(:, i)';
-        benefit(:, i + 1) = B(:, i);
+    % Evaluate profit and spend for each option and farmer
+    if isstruct(ES) 
+        for i = 1:length(elm_option)
+            profit(:, i + 1)  = p * ES.(elm_option{i})' - C(:, i)';
+            benefit(:, i + 1) = B(:, i);
+        end
+    else
+        for i = 1:length(elm_option)
+            profit(:, i + 1) = p * ES(:, :, i)' - C(:, i)';
+            benefit(:, i + 1)  = p * ES(:, :, i)';
+        end
     end
     
 	% Find which option gives each farmer maximum profit

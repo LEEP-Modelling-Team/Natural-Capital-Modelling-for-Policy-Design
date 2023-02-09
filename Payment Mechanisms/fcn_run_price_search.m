@@ -41,12 +41,12 @@ function prices = fcn_run_price_search(payment_mechanism, ...
     % Use farmer_sample_ind to select farmers to include in price search
     % ------------------------------------------------------------------    
     % Extract relevant rows from above arrays/structures
-    elm_ha_year = elm_ha_year(farmer_sample_ind, :);
-    benefits_year = benefits_year(farmer_sample_ind, :);
-    costs_year = costs_year(farmer_sample_ind, :);
+    elm_ha_year = round(elm_ha_year(farmer_sample_ind, :), 8);
+    benefits_year = round(benefits_year(farmer_sample_ind, :), 8);
+    costs_year = round(costs_year(farmer_sample_ind, :), 8);
     for k = 1:num_elm_options
-        env_outs_year.(elm_options{k}) = env_outs_year.(elm_options{k})(farmer_sample_ind, :);
-        es_outs_year.(elm_options{k}) = es_outs_year.(elm_options{k})(farmer_sample_ind, :);
+        env_outs_year.(elm_options{k}) = round(env_outs_year.(elm_options{k})(farmer_sample_ind, :), 8);
+        es_outs_year.(elm_options{k}) = round(es_outs_year.(elm_options{k})(farmer_sample_ind, :), 8);
     end
     
     % Also extract cell ids for eligible farmers

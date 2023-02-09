@@ -1,0 +1,75 @@
+<?xml version = "1.0" encoding="UTF-8" standalone="yes"?>
+<CPLEXSolutions version="1.2">
+ <CPLEXSolution version="1.2">
+  <header problemName="elms_lp" solutionsutionName="m1" solutionsutionIndex="1" MIPStartEffortLevel="4" writeLevel="1"/>
+  <variables>
+   <variable index="0" value="1.000000"/>
+   <variable index="2" value="3.000000"/>
+   <variable index="4" value="5.000000"/>
+   <variable index="6" value="7.000000"/>
+   <variable index="0" value="  </variables>
+ </CPLEXSolution>
+ <CPLEXSolution version="1.2">
+  <header problemName="elms_lp" solutionsutionName="m2" solutionsutionIndex="2" MIPStartEffortLevel="4" writeLevel="1"/>
+  <variables>
+   <variable index="0" value="1.000000"/>
+   <variable index="2" value="3.000000"/>
+   <variable index="4" value="5.000000"/>
+   <variable index="6" value="7.000000"/>
+   <variable index="1.537693e+03" value="  </variables>
+ </CPLEXSolution>
+ <CPLEXSolution version="1.2">
+  <header problemName="elms_lp" solutionsutionName="m3" solutionsutionIndex="3" MIPStartEffortLevel="4" writeLevel="1"/>
+  <variables>
+   <variable index="0" value="1.000000"/>
+   <variable index="2" value="3.000000"/>
+   <variable index="4" value="5.000000"/>
+   <variable index="6" value="7.000000"/>
+   <variable index="1.600529e+04" value="  </variables>
+ </CPLEXSolution>
+ <CPLEXSolution version="1.2">
+  <header problemName="elms_lp" solutionsutionName="m4" solutionsutionIndex="4" MIPStartEffortLevel="4" writeLevel="1"/>
+  <variables>
+   <variable index="0" value="1.000000"/>
+   <variable index="2" value="3.000000"/>
+   <variable index="4" value="5.000000"/>
+   <variable index="6" value="7.000000"/>
+   <variable index="0" value="  </variables>
+ </CPLEXSolution>
+ <CPLEXSolution version="1.2">
+  <header problemName="elms_lp" solutionsutionName="m5" solutionsutionIndex="5" MIPStartEffortLevel="4" writeLevel="1"/>
+  <variables>
+   <variable index="0" value="1.000000"/>
+   <variable index="2" value="3.000000"/>
+   <variable index="4" value="5.000000"/>
+   <variable index="6" value="7.000000"/>
+   <variable index="0" value="  </variables>
+ </CPLEXSolution>
+ <CPLEXSolution version="1.2">
+  <header problemName="elms_lp" solutionsutionName="m6" solutionsutionIndex="6" MIPStartEffortLevel="4" writeLevel="1"/>
+  <variables>
+   <variable index="0" value="1.000000"/>
+   <variable index="2" value="3.000000"/>
+   <variable index="4" value="5.000000"/>
+   <variable index="6" value="7.000000"/>
+   <variable index="7.959688e+02" value="  </variables>
+ </CPLEXSolution>
+ <CPLEXSolution version="1.2">
+  <header problemName="elms_lp" solutionsutionName="m7" solutionsutionIndex="7" MIPStartEffortLevel="4" writeLevel="1"/>
+  <variables>
+   <variable index="0" value="1.000000"/>
+   <variable index="2" value="3.000000"/>
+   <variable index="4" value="5.000000"/>
+   <variable index="6" value="7.000000"/>
+   <variable index="0" value="  </variables>
+ </CPLEXSolution>
+ <CPLEXSolution version="1.2">
+  <header problemName="elms_lp" solutionsutionName="m8" solutionsutionIndex="8" MIPStartEffortLevel="4" writeLevel="1"/>
+  <variables>
+   <variable index="0" value="1.000000"/>
+   <variable index="2" value="3.000000"/>
+   <variable index="4" value="5.000000"/>
+   <variable index="6" value="7.000000"/>
+   <variable index="8.488690e+03" value="  </variables>
+ </CPLEXSolution>
+</CPLEXSolutions>

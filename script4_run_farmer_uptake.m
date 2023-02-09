@@ -23,7 +23,7 @@ markup = 1.15;
 % Carbon price
 % carbon_price_string = 'scc';
 % carbon_price_string = 'nontraded_low';
-carbon_price_string = 'nontraded_central';
+carbon_price_string = 'non_trade_central';
 % carbon_price_string = 'nontraded_high';
 
 % Load 2km grid cells in England
@@ -80,8 +80,8 @@ end
 num_elm_options = length(available_elm_options);
 
 % Set up number of years for loop
-years = 1:5;
-nyears = length(1:5);
+years = 1;
+nyears = length(years);
 
 % Payment mechanism names
 % -----------------------
@@ -116,9 +116,9 @@ nyears = length(1:5);
 %                       'fr_es'; ...
 %                       'fr_es'};
 
-payment_mechanisms = {'fr_act', ...
-                      'fr_act', ...
-                      'fr_act'};
+payment_mechanisms = {'oc', ...
+                      'oc', ...
+                      'oc'};
 
 % Payment mechanism budgets
 % -------------------------
@@ -164,7 +164,7 @@ for sim = 1:nsim
     % ----------------------------
     % Must be reset for every simulation, gets updated within year loop
     rng(2074675) % Use random seed to get repeatable results
-    scheme_year = randi(5, cell_info.ncells, 1);
+    scheme_year = randi(nyears, cell_info.ncells, 1);
     
     % Set current payment mechanism and budget to MP structure
     % --------------------------------------------------------

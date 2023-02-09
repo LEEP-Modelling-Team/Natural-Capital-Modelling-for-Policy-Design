@@ -41,7 +41,7 @@ function [opt_cells, option_choice, best_rate] = fcn_payment_fr_env_es(payment_m
     start_rate = 5;
     env_outs_array = struct2array(env_outs);
     for i = 1:num_env_out
-        env_outs_array_i = env_outs_array(:, i:num_env_out:(16*num_env_out));
+        env_outs_array_i = env_outs_array(:, i:num_env_out:(8*num_env_out));
         if sum(sum(env_outs_array_i)) == 0
             % If there are no benefits/quantities across all options then
             % keep max_rate at zero

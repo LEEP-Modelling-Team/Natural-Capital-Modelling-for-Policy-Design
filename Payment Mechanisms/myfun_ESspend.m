@@ -6,9 +6,14 @@ function x = myfun_ESspend(p, ES, C, bc, elm_option)
     
     % Evaluate profit & costs for each option  
     for i = 1:length(elm_option)
-        payment       = p*ES.(elm_option{i})';
-        profit(:,i+1) = payment - C(:,i)';
-        spend(:,i+1)  = payment;
+        if isstruct(ES)
+            payment       = p*ES.(elm_option{i})';
+            profit(:,i+1) = payment - C(:,i)';
+            spend(:,i+1)  = payment;
+        else
+            payment       = p*ES(:, :, i)';
+            profit(:,i+1) = payment - C(:,i)';
+            spend(:,i+1)  = payment;
     end
            
     [~, max_profit_col_idx] = max(profit,[],2);

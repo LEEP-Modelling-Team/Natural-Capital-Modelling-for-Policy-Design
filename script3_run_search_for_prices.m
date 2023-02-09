@@ -51,7 +51,7 @@ cell_info.ncells = length(cell_info.new2kid);   % Number of cells
 % Select a 1/5th of farmers 
 rng(40);
 farmer_perm = randperm(cell_info.ncells);
-farmer_sample_ind = (farmer_perm <= round(cell_info.ncells / 5))';
+farmer_sample_ind = (farmer_perm <= round(cell_info.ncells / 1))';
 
 % Remove non-use habitat values if specified
 % ------------------------------------------
@@ -118,9 +118,9 @@ nyears = length(1:5);
 %                       'fr_es'; ...
 %                       'fr_es'};
 
-payment_mechanisms = {'fr_act', ...
-                      'fr_act', ...
-                      'fr_act'};
+payment_mechanisms = {'fr_env', ...
+                      'fr_env', ...
+                      'fr_env'};
 
 % Payment mechanism budgets
 % -------------------------
