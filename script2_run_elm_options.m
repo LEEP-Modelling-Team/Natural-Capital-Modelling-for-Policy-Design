@@ -102,7 +102,9 @@ PV_original = fcn_import_primary_variables(conn, cell_info);
 % Created in script1_run_baseline.m script
 % Depends on what carbon price has been used
 % Used to calculate benefit under each ELM option scenario
-load(['Script 1 (Baseline Runs)/baseline_results_', carbon_price_string, '.mat'], 'baseline')
+data_folder = 'D:\Documents\Data\Defra-ELMS\';
+data_path = [data_folder, 'Script 1 (Baseline Runs)/baseline_results_', carbon_price_string, '.mat'];
+load(data_path);
 
 % Load water results and related information
 % ------------------------------------------
@@ -495,6 +497,7 @@ end
 %  ================================================================
 % Flat rates cannot be larger than unit values
 unit_value_max.bio = biodiversity_unit_value;
+% total, ghg_farm, forestry, ghg_forestry, ghg_soil_forestry, rec, flooding transfer, totn, totp, water_non_use, pollination, non use pollination, non use habitat, biodiversity
 
 % N & P flat rates cannot be larger than maximum N & P benefits per unit
 % Estimated from woodland destocking option

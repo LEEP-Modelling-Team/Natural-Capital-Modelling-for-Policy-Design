@@ -23,11 +23,11 @@ function best_rate = fcn_find_warm_start(payment_mechanism_string, ...
     % Adjusted maximum prices based on logic
     switch payment_mechanism_string
         case 'fr_env'
-            max_rates(1) = min(max_rates(1), unit_value_max.ghg);    % GHG
-            % 2:5 the 4 rec hectares are constrained by budget only
-            max_rates(6) = min(max_rates(6), unit_value_max.flood);  % flood
-            max_rates(7) = min(max_rates(7), unit_value_max.n);      % nitrate
-            max_rates(8) = min(max_rates(8), unit_value_max.p);      % phosphate
+%             max_rates(1) = min(max_rates(1), unit_value_max.ghg);    % GHG
+%             % 2:5 the 4 rec hectares are constrained by budget only
+%             max_rates(6) = min(max_rates(6), unit_value_max.flood);  % flood
+%             max_rates(7) = min(max_rates(7), unit_value_max.n);      % nitrate
+%             max_rates(8) = min(max_rates(8), unit_value_max.p);      % phosphate
             max_rates(10) = min(max_rates(10), unit_value_max.bio);    % biodiversity
         case 'fr_es'
             % We don't want to pay more than £1 for £1 benefit

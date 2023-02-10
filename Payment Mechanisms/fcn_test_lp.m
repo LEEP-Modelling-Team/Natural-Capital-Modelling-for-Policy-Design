@@ -28,11 +28,11 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
         end
         max_rates(i) = fcn_lin_search(num_env_out,i,start_rate,0.01,constraintfunc,q,c,budget,elm_options);
     end
-    max_rates(1) = min(max_rates(1), unit_value_max.ghg);    % GHG
-    % 2:5 the 4 rec hectares are constrained by budget only
-    max_rates(6) = min(max_rates(6), unit_value_max.flood);  % flood
-    max_rates(7) = min(max_rates(7), unit_value_max.n);      % nitrate
-    max_rates(8) = min(max_rates(8), unit_value_max.p);      % phosphate
+%     max_rates(1) = min(max_rates(1), unit_value_max.ghg);    % GHG
+%     % 2:5 the 4 rec hectares are constrained by budget only
+%     max_rates(6) = min(max_rates(6), unit_value_max.flood);  % flood
+%     max_rates(7) = min(max_rates(7), unit_value_max.n);      % nitrate
+%     max_rates(8) = min(max_rates(8), unit_value_max.p);      % phosphate
     max_rates(10) = min(max_rates(10), unit_value_max.bio);    % biodiversity
 
     % Store transposed matrices
@@ -190,17 +190,7 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     B10_lb = ones(length(Bineq10), 1) * -Inf;
     B10_ub = Bineq10;
     clear Aineq10_p Aineq10_u Aineq10_d
-    
-    % 11th constraint (Utility must be slightly greater than 0 for having an uptake)
-    q_perm = permute(q, [3, 2, 1]);
-    Aineq11_p = -reshape(permute(q_perm, [1, 3, 2]), [], size(q_perm, 2), 1);
-    Aineq11_u = sparse(num_farmers .* num_options, num_farmers);
-    Aineq11_d = ones(num_env_out, num_farmers .* num_options);
-    Aineq11 = [Aineq11_p, Aineq11_u, Aineq11_d];
-    Bineq10 = M - reshape(c', [num_options*num_farmers, 1]);
-    B10_lb = ones(length(Bineq10), 1) * -Inf;
-    B10_ub = Bineq10;
-    clear Aineq10_p Aineq10_u Aineq10_d
+   
     
     % Combine all inequalities into one matrix
     switch eq10
@@ -224,14 +214,16 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
 
     % Warm start
     % ----------
-    best_rate = fcn_find_warm_start(payment_mechanism, ...
-                                        budget, ...
-                                        elm_options, ...
-                                        c, ... 
-                                        b, ...
-                                        q, ...
-                                        unit_value_max, ...
-                                        max_rates);
+%     best_rate = fcn_find_warm_start(payment_mechanism, ...
+%                                         budget, ...
+%                                         elm_options, ...
+%                                         c, ... 
+%                                         b, ...
+%                                         q, ...
+%                                         unit_value_max, ...
+%                                         max_rates);
+                                    
+    best_rate = [30.6970625777363,29.4899684479249,231.364268148029,275.807608315046,3.40758067433056,6259689.44011931,1203763.01693944,3090373.93449751,129.259940837273,-0.00124772747139409];
     sln = best_rate;
     idx = 0:length(best_rate)-1;
     filename = 'warmstart.mst';
@@ -246,7 +238,7 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
 %         cplex.Param.emphasis.mip.Cur = 1; % emphasise feasibility
     cplex.Param.mip.strategy.search.Cur = 2;
     cplex.Param.parallel.Cur = 1;
-%         cplex.Param.timelimit.Cur = 7200;
+    cplex.Param.timelimit.Cur = 300;
 
     cplex.addCols(f, [], lb, ub, ctype);
     cplex.addRows(B_lb, A, B_ub);
