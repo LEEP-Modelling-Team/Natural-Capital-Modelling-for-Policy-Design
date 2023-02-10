@@ -8,7 +8,7 @@ clear
 %  =========
 carbon_price_string = 'non_trade_central';
 remove_nu_habitat = true;
-sample_size = 32000;
+sample_size = 150;
 unscaled_budget = 1e9;
 payment_mechanism = 'fr_env';
 
