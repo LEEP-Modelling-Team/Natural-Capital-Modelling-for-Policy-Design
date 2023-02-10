@@ -259,7 +259,8 @@ function prices = reduce_lp_price_space(benefits,...
         % ----------------
         cplex = Cplex('elms_lp');
         cplex.Model.sense = 'maximize';
-        cplex.Param.emphasis.mip.Cur = 0;
+        cplex.Param.emphasis.mip.Cur = 0; % balanced
+%         cplex.Param.emphasis.mip.Cur = 1; % emphasise feasibility
         cplex.Param.mip.strategy.search.Cur = 2;
         cplex.Param.parallel.Cur = 1;
 %         cplex.Param.timelimit.Cur = 7200;
@@ -278,6 +279,7 @@ function prices = reduce_lp_price_space(benefits,...
         % Retrieve prices
         % ---------------
         lp_rates = cplex.Solution.x(1:num_env_out)';
+        x = cplex.Solution.x;
         prices(ii, :) = lp_rates;
         vals(ii, 1) = cplex.Solution.objval;
         lp_rates = array2table(lp_rates);

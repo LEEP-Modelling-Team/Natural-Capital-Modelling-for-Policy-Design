@@ -29,7 +29,8 @@ carbon_price_string = 'non_trade_central';
 % --------------------------------------
 % Generated in script2_run_elm_options.m
 % Depends on carbon price
-load(['Script 2 (ELM Option Runs)/elm_option_results_', carbon_price_string, '.mat'])
+filepath = 'D:\Documents\Data\Defra-ELMS\';
+load([filepath, 'Script 2 (ELM Option Runs)/elm_option_results_', carbon_price_string, '.mat'])
 
 % Load 2km grid cells in England
 % ------------------------------
@@ -165,7 +166,7 @@ for i = 1:nsim
     % --------------------------------------------------------
     payment_mechanism_i = payment_mechanisms{i};
     budget_i            = budgets(i);
-    
+        
     % Print simulation info to screen
     % -------------------------------
     fprintf('\nELMS SIMULATION %.0f\n', i);   

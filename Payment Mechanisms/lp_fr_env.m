@@ -39,7 +39,7 @@ function [options_uptake, best_rate, tot_benefits] = lp_fr_env(elm_options, ...
     % --------------------
     sample_size = 500;
     num_iters = 10;
-    [prices, times, vals] = reduce_lp_price_space(b, c, q, budget, elm_options, payment_mechanism, unit_value_max, sample_size, num_iters);
+    prices = reduce_lp_price_space(b, c, q, budget, elm_options, payment_mechanism, unit_value_max, sample_size, num_iters);
 
 %     price_table = array2table(prices);
 %     

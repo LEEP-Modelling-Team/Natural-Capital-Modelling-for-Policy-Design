@@ -14,7 +14,7 @@ function f = myfun_ES(p, ES, C, B, elm_option)
     else
         for i = 1:length(elm_option)
             profit(:, i + 1) = p * ES(:, :, i)' - C(:, i)';
-            benefit(:, i + 1)  = p * ES(:, :, i)';
+            benefit(:, i + 1)  = B(:, i);
         end
     end
     
