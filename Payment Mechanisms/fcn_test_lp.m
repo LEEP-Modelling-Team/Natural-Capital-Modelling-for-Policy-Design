@@ -242,7 +242,7 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
 
     cplex.addCols(f, [], lb, ub, ctype);
     cplex.addRows(B_lb, A, B_ub);
-    cplex.readMipStart('warmstart.mst');
+%     cplex.readMipStart('warmstart.mst');
 
     % Solve
     % -----
