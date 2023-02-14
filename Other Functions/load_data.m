@@ -92,11 +92,11 @@ function [b,c,q,budget,available_elm_options,unit_value_max] = load_data(sample_
     % Use farmer_sample_ind to select farmers to include in price search
     % ------------------------------------------------------------------    
     % Extract relevant rows from above arrays/structures
-    b = round(benefits_year(farmer_sample_ind, :), 8);
-    c = round(costs_year(farmer_sample_ind, :), 8);
+    b = benefits_year(farmer_sample_ind, :);
+    c = costs_year(farmer_sample_ind, :);
     for k = 1:num_elm_options
-        env_outs.(available_elm_options{k}) = round(env_outs_year.(available_elm_options{k})(farmer_sample_ind, :), 8);
-        es_outs.(available_elm_options{k}) = round(es_outs_year.(available_elm_options{k})(farmer_sample_ind, :), 8);
+        env_outs.(available_elm_options{k}) = env_outs_year.(available_elm_options{k})(farmer_sample_ind, :);
+        es_outs.(available_elm_options{k}) = es_outs_year.(available_elm_options{k})(farmer_sample_ind, :);
     end
 
     q = cat(3, env_outs.arable_reversion_sng_access, env_outs.destocking_sng_access,...
