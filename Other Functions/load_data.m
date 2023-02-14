@@ -34,9 +34,18 @@ function [b,c,q,budget,available_elm_options,unit_value_max] = load_data(sample_
 
     % Choose sample of farmers to go into price search
     % ------------------------------------------------
-    % Select a 1/5th of farmers 
-    farmer_perm = randperm(cell_info.ncells);
-    farmer_sample_ind = (farmer_perm <= sample_num)';
+    % Select a 1/5th of farmers
+    if isnumeric(sample_num)
+        farmer_perm = randperm(cell_info.ncells);
+        farmer_sample_ind = (farmer_perm <= sample_num)';
+        budget = unscaled_budget ./ cell_info.ncells .* sample_num;
+    elseif strcmp(sample_num, 'no')
+        farmer_perm = randperm(cell_info.ncells);
+        farmer_sample_ind = (farmer_perm <= cell_info.ncells)';
+        budget = unscaled_budget;
+    else
+        fprintf('''sample_num'' can only assume a numeric value or ''no'' if no sampling is required\n'); 
+    end
 
     % Remove non-use habitat values if specified
     % ------------------------------------------
@@ -95,5 +104,5 @@ function [b,c,q,budget,available_elm_options,unit_value_max] = load_data(sample_
         env_outs.arable_reversion_sng_noaccess, env_outs.destocking_sng_noaccess,...
         env_outs.arable_reversion_wood_noaccess, env_outs.destocking_wood_noaccess);
     c = c .* markup;
-    budget = unscaled_budget ./ cell_info.ncells .* sample_num;
+    
 end
