@@ -53,7 +53,7 @@ cell_info.ncells = length(cell_info.new2kid);   % Number of cells
 rng(40);
 farmer_perm = randperm(cell_info.ncells);
 farmer_sample_ind = (farmer_perm <= round(cell_info.ncells))';
-% farmer_sample_ind = (farmer_perm <= 450)';
+% farmer_sample_ind = (farmer_perm <= 500)';
 
 % Remove non-use habitat values if specified
 % ------------------------------------------
