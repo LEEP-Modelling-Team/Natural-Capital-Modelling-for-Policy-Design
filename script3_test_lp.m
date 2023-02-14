@@ -8,7 +8,7 @@ clear
 %  =========
 carbon_price_string = 'non_trade_central';
 remove_nu_habitat = true;
-sample_size = 500; % either 'no' or a number representing the sample size
+sample_size = 'no'; % either 'no' or a number representing the sample size
 unscaled_budget = 1e9;
 payment_mechanism = 'fr_env';
 
@@ -44,7 +44,7 @@ best_rate = fcn_find_warm_start(payment_mechanism, ...
                                         unit_value_max, ...
                                         max_rates);
 
-benefits = find_objective_value(best_rate, q, c, b, budget, available_elm_options)
+benefits = find_objective_value(warmstart_p, q, c, b, budget, available_elm_options)
 fun = @(x) find_objective_value(x, q, c, b, budget, available_elm_options);
 options = optimset('MaxFunEvals',inf, 'MaxIter', 20000);
 
@@ -56,6 +56,15 @@ fvals_nlsearch = zeros(iters, 1);
 prices_nlsearch = zeros(iters, width(q));
 fvals_milp = zeros(iters, 1);
 prices_milp = zeros(iters, width(q));
+
+% Attempt multistart https://uk.mathworks.com/help/gads/how-globalsearch-and-multistart-work.html#bsc9eec
+rrng default % For reproducibility
+opts = optimoptions(@fminsearch,'Algorithm','sqp');
+problem = createOptimProblem('fminsearch','objective',...
+    fun,'x0',3,'lb',-5,'ub',5,'options',opts);
+ms = MultiStart;
+[x,f] = run(ms,problem,20)
+
 
 for i = 1:iters
     fprintf('Searching from price set %i ...\n', i)
@@ -88,7 +97,7 @@ writetable(milp, 'milp_500_nobio.csv');
 
 % %% 3) RUN OPTIMISATION
 % %  ===================
-[prices_milp, fval_milp, x_milp] =  fcn_test_lp('yes', b, c, q, budget, available_elm_options, payment_mechanism, unit_value_max, best_rates);
+[prices_milp, fval_milp, x_milp] =  fcn_test_lp('yes', b, c, q, budget, available_elm_options, payment_mechanism, unit_value_max, warmstart_p);
 
 
 

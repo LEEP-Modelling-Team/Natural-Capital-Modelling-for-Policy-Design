@@ -239,6 +239,8 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     cplex.Param.mip.strategy.search.Cur = 2;
     cplex.Param.parallel.Cur = 1;
 %     cplex.Param.timelimit.Cur = 300;
+    cplex.Param.mip.tolerances.integrality.Cur = 0;
+    cplex.Param.mip.tolerances.mipgap.Cur = 0;
 
     cplex.addCols(f, [], lb, ub, ctype);
     cplex.addRows(B_lb, A, B_ub);
