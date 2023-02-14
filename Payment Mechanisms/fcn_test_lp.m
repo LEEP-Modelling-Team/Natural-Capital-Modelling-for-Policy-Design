@@ -1,4 +1,4 @@
-function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, payment_mechanism, unit_value_max)
+function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, payment_mechanism, unit_value_max, warm_start_prices)
     
     %% 1. INITIALISE
     %  =============
@@ -33,7 +33,7 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
 %     max_rates(6) = min(max_rates(6), unit_value_max.flood);  % flood
 %     max_rates(7) = min(max_rates(7), unit_value_max.n);      % nitrate
 %     max_rates(8) = min(max_rates(8), unit_value_max.p);      % phosphate
-    max_rates(10) = min(max_rates(10), unit_value_max.bio);    % biodiversity
+%     max_rates(10) = min(max_rates(10), unit_value_max.bio);    % biodiversity
 
     % Store transposed matrices
     bt = b';
@@ -223,9 +223,8 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
 %                                         unit_value_max, ...
 %                                         max_rates);
                                     
-    best_rate = [30.6970625777363,29.4899684479249,231.364268148029,275.807608315046,3.40758067433056,6259689.44011931,1203763.01693944,3090373.93449751,129.259940837273,0];
-    sln = best_rate;
-    idx = 0:length(best_rate)-1;
+    sln = warm_start_prices;
+    idx = 0:length(warm_start_prices)-1;
     filename = 'warmstart.mst';
     probname = 'elms_lp';
     fcn_write_warmstart(sln', idx', filename, probname);
@@ -234,15 +233,16 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     % ----------------
     cplex = Cplex('elms_lp');
     cplex.Model.sense = 'maximize';
+%     cplex.Param.benders.strategy.Cur = 1;
     cplex.Param.emphasis.mip.Cur = 0; % balanced
 %         cplex.Param.emphasis.mip.Cur = 1; % emphasise feasibility
     cplex.Param.mip.strategy.search.Cur = 2;
     cplex.Param.parallel.Cur = 1;
-    cplex.Param.timelimit.Cur = 300;
+%     cplex.Param.timelimit.Cur = 300;
 
     cplex.addCols(f, [], lb, ub, ctype);
     cplex.addRows(B_lb, A, B_ub);
-%     cplex.readMipStart('warmstart.mst');
+    cplex.readMipStart('warmstart.mst');
 
     % Solve
     % -----
