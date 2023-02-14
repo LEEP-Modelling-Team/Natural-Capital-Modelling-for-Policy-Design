@@ -47,7 +47,7 @@ end
 
 benefits = find_objective_value(best_rates(1, :), q, c, b, budget, available_elm_options)
 
-[prices_milp, fval_milp, x_milp] =  fcn_test_lp('yes', b, c, q, budget, available_elm_options, payment_mechanism, unit_value_max, best_rates(1, :));
+[prices_milp, fval_milp, x_milp] =  fcn_test_lp('no', b, c, q, budget, available_elm_options, max_rates, best_rates(1, :));
 
 
 % fun = @(x) find_objective_value(x, q, c, b, budget, available_elm_options);
