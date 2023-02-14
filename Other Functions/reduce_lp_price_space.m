@@ -41,9 +41,9 @@ function prices = reduce_lp_price_space(benefits,...
         farmer_perm = randperm(height(benefits));
         farmer_sample_ind = (farmer_perm <= sample_size)';
         
-        b = round(benefits(farmer_sample_ind, :), 2);
-        c = round(costs(farmer_sample_ind, :), 2);
-        q = round(quantities(farmer_sample_ind, :, :), 2);
+        b = benefits(farmer_sample_ind, :);
+        c = costs(farmer_sample_ind, :);
+        q = quantities(farmer_sample_ind, :, :);
         
         scaled_budget = budget ./ height(benefits) .* (height(b) - 10);
     
@@ -214,26 +214,15 @@ function prices = reduce_lp_price_space(benefits,...
         B9_ub = Bineq9;
         clear Aineq9_p Aineq9_u Aineq9_d
         
-        % 10th constraint (Utility must be slightly greater than 0 for having an uptake)
-        q_perm = permute(q, [3, 2, 1]);
-        Aineq10_p = -reshape(permute(q_perm, [1, 3, 2]), [], size(q_perm, 2), 1);
-        Aineq10_u = sparse(num_farmers .* num_options, num_farmers);
-        Aineq10_d = M .* speye(num_options * num_farmers);
-        Aineq10 = [Aineq10_p, Aineq10_u, Aineq10_d];
-        Bineq10 = M - reshape(c', [num_options*num_farmers, 1]);
-        B10_lb = ones(length(Bineq10), 1) * -Inf;
-        B10_ub = Bineq10;
-        clear Aineq10_p Aineq10_u Aineq10_d
-
         % Combine all inequalities into one matrix
-%         A = [Aineq1; Aineq2; Aineq3; Aineq4; Aineq5; Aineq6; Aineq7; Aineq8; Aineq9];
-%         B = [Bineq1; Bineq2; Bineq3; Bineq4; Bineq5; Bineq6; Bineq7; Bineq8; Bineq9];
-%         B_lb = [B1_lb; B2_lb; B3_lb; B4_lb; B5_lb; B6_lb; B7_lb; B8_lb; B9_lb];
-%         B_ub = [B1_ub; B2_ub; B3_ub; B4_ub; B5_ub; B6_ub; B7_ub; B8_ub; B9_ub];
-        A = [Aineq1; Aineq2; Aineq3; Aineq4; Aineq5; Aineq6; Aineq7; Aineq8; Aineq9; Aineq10];
-        B = [Bineq1; Bineq2; Bineq3; Bineq4; Bineq5; Bineq6; Bineq7; Bineq8; Bineq9; Bineq10];
-        B_lb = [B1_lb; B2_lb; B3_lb; B4_lb; B5_lb; B6_lb; B7_lb; B8_lb; B9_lb; B10_lb];
-        B_ub = [B1_ub; B2_ub; B3_ub; B4_ub; B5_ub; B6_ub; B7_ub; B8_ub; B9_ub; B10_ub];
+        A = [Aineq1; Aineq2; Aineq3; Aineq4; Aineq5; Aineq6; Aineq7; Aineq8; Aineq9];
+        B = [Bineq1; Bineq2; Bineq3; Bineq4; Bineq5; Bineq6; Bineq7; Bineq8; Bineq9];
+        B_lb = [B1_lb; B2_lb; B3_lb; B4_lb; B5_lb; B6_lb; B7_lb; B8_lb; B9_lb];
+        B_ub = [B1_ub; B2_ub; B3_ub; B4_ub; B5_ub; B6_ub; B7_ub; B8_ub; B9_ub];
+%         A = [Aineq1; Aineq2; Aineq3; Aineq4; Aineq5; Aineq6; Aineq7; Aineq8; Aineq9; Aineq10];
+%         B = [Bineq1; Bineq2; Bineq3; Bineq4; Bineq5; Bineq6; Bineq7; Bineq8; Bineq9; Bineq10];
+%         B_lb = [B1_lb; B2_lb; B3_lb; B4_lb; B5_lb; B6_lb; B7_lb; B8_lb; B9_lb; B10_lb];
+%         B_ub = [B1_ub; B2_ub; B3_ub; B4_ub; B5_ub; B6_ub; B7_ub; B8_ub; B9_ub; B10_ub];
         clear Aineq1 Aineq2 Aineq3 Aineq4 Aineq5 Aineq6 Aineq7 Aineq8 Aineq9 Aineq10
         clear Bineq1 Bineq2 Bineq3 Bineq4 Bineq5 Bineq6 Bineq7 Bineq8 Bineq9 Bineq10
         clear B1_lb B2_lb B3_lb B4_lb B5_lb B6_lb B7_lb B8_lb B9_lb B10_lb
@@ -241,7 +230,7 @@ function prices = reduce_lp_price_space(benefits,...
                 
         % Warm start
         % ----------
-        best_rate = fcn_find_warm_start(payment_mechanism, ...
+        [best_rate,~] = fcn_find_warm_start(payment_mechanism, ...
                                             scaled_budget, ...
                                             elm_options, ...
                                             c, ... 
@@ -249,8 +238,9 @@ function prices = reduce_lp_price_space(benefits,...
                                             q, ...
                                             unit_value_max, ...
                                             max_rates);
-        sln = best_rate;
-        idx = 0:length(best_rate)-1;
+        sln = best_rate(1,:);
+%         find_objective_value(sln, q, c, b, budget,elm_options)
+        idx = 0:length(sln)-1;
         filename = 'warmstart.mst';
         probname = 'elms_lp';
         fcn_write_warmstart(sln', idx', filename, probname);
