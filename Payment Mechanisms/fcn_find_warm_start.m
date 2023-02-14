@@ -28,7 +28,9 @@ function best_rate = fcn_find_warm_start(payment_mechanism_string, ...
 %             max_rates(6) = min(max_rates(6), unit_value_max.flood);  % flood
 %             max_rates(7) = min(max_rates(7), unit_value_max.n);      % nitrate
 %             max_rates(8) = min(max_rates(8), unit_value_max.p);      % phosphate
-            max_rates(10) = min(max_rates(10), unit_value_max.bio);    % biodiversity
+            if num_env_out == 10
+                max_rates(10) = min(max_rates(10), unit_value_max.bio);    % biodiversity
+            end
         case 'fr_es'
             % We don't want to pay more than £1 for £1 benefit
             max_rates = ones(1, num_env_out);
