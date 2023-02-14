@@ -1,4 +1,4 @@
-function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, payment_mechanism, unit_value_max, warm_start_prices)
+function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, max_rates, warm_start_prices)
     
     %% 1. INITIALISE
     %  =============
@@ -14,27 +14,7 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     num_farmers = size(b, 1);
     num_options = size(b, 2);
     num_env_out = width(q);
-
-    % Set max rates with a linear search
-    constraintfunc = @(p) mycon_ES(p, q, c, budget, elm_options);
-    max_rates = zeros(1, num_env_out);
-    start_rate = 5;
-    for i = 1:num_env_out
-        env_outs_array_i = squeeze(q(:, i, :));
-        if sum(sum(env_outs_array_i)) == 0
-            % If there are no benefits/quantities across all options then
-            % keep max_rate at zero
-            continue
-        end
-        max_rates(i) = fcn_lin_search(num_env_out,i,start_rate,0.01,constraintfunc,q,c,budget,elm_options);
-    end
-%     max_rates(1) = min(max_rates(1), unit_value_max.ghg);    % GHG
-%     % 2:5 the 4 rec hectares are constrained by budget only
-%     max_rates(6) = min(max_rates(6), unit_value_max.flood);  % flood
-%     max_rates(7) = min(max_rates(7), unit_value_max.n);      % nitrate
-%     max_rates(8) = min(max_rates(8), unit_value_max.p);      % phosphate
-%     max_rates(10) = min(max_rates(10), unit_value_max.bio);    % biodiversity
-
+    
     % Store transposed matrices
     bt = b';
     ct = c';
@@ -55,11 +35,11 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
 
     % 4) Rf
     R_f = sum(q_ef .* R_e, 2);
-
+    
     % 5) S
     S = max(R_f);
     S = budget;
-
+    
     % 6) T
     T = 1;
 
@@ -77,7 +57,7 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     lb    = sparse(num_env_out + num_farmers + num_options * num_farmers, 1);
     ub    = [max_rates'; repelem(budget, num_farmers, 1); ones((num_options * num_farmers), 1)]; %
     ctype = [repmat('C',1,(num_env_out + num_farmers)), repmat('I', 1, (num_options * num_farmers))];
-
+    
     % Set Inequality constraints
     % --------------------------
 
@@ -88,8 +68,7 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     Aineq1 = [Aineq1_p, Aineq1_u, Aineq1_d];
     Bineq1 = ones(num_farmers, 1);
     B1_lb = sparse(num_farmers, 1);
-    B1_ub = Bineq1;
-
+    B1_ub = Bineq1;    
     clear Aineq1_p Aineq1_u Aineq1_d
 
     % 2nd inequality
@@ -102,19 +81,19 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     B2_lb = ones(length(Bineq2), 1) * -Inf;
     B2_ub = Bineq2;
     clear Aineq2_p Aineq2_u Aineq2_d
-
+    
     % 3rd inequality
     q_perm = permute(q, [3, 2, 1]);
     Aineq3_p = -reshape(permute(q_perm, [1, 3, 2]), [], size(q_perm, 2), 1);
     Aineq3_u = repelem(speye(num_farmers), num_options, 1);
     c_rf = num2cell(c,2);
     c_rf = repelem(sparse(blkdiag(c_rf{:})), num_options, 1);
-    Rf_rep = budget;
-%     Rf_rep = repelem(R_f, num_options);
+%     Rf_rep = repmat(R_f, 1, num_options)'; 
+%     Rf_rep = Rf_rep(:);
+    Rf_rep = budget .* 2;
     Aineq3_d = c_rf + (Rf_rep.*speye(num_farmers*num_options));
     Aineq3 = [Aineq3_p, Aineq3_u, Aineq3_d];
     Bineq3 = repelem(Rf_rep, height(Aineq3))';
-%     Bineq3 = Rf_rep;
     B3_lb = ones(length(Bineq3), 1) * -Inf;
     B3_ub = Bineq3;
     clear Aineq3_p Aineq3_u Aineq3_d c_rf
@@ -127,7 +106,6 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     Bineq4 = zeros(num_env_out, 1);
     B4_lb = ones(num_env_out, 1) * -Inf;
     B4_ub = Bineq4;
-
     clear Aineq4_p Aineq4_u Aineq4_d
 
     % 5th inequality
@@ -139,7 +117,7 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     B5_lb = ones(num_farmers, 1) * -Inf;
     B5_ub = Bineq5;
     clear Aineq5_p Aineq5_u Aineq5_d
-
+    
     % 6th inequality constraint: budget
     Aineq6_p = sparse(1, num_env_out);
     Aineq6_u = ones(1, num_farmers);
@@ -147,11 +125,11 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     Aineq6 = [Aineq6_p, Aineq6_u, Aineq6_d];
     Bineq6 = budget;
     B6_lb = 0;
-    B6_ub = budget;
+    B6_ub = budget;    
     clear Aineq6_p Aineq6_u Aineq6_d
 
     % 7th inequality constraint: maximum price
-    Aineq7_p = speye(num_env_out);
+     Aineq7_p = speye(num_env_out);
     Aineq7_u = sparse(num_env_out, num_farmers);
     Aineq7_d = sparse(num_env_out, num_farmers * num_options);
     Aineq7 = [Aineq7_p, Aineq7_u, Aineq7_d];
@@ -167,18 +145,18 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
     Aineq8 = [Aineq8_p, Aineq8_u, Aineq8_d];
     Bineq8 = zeros(num_farmers, 1);
     B8_lb = ones(num_farmers, 1) * -Inf;
-    B8_ub = Bineq8;
+    B8_ub = Bineq8;    
     clear Aineq8_p Aineq8_u Aineq8_d
 
     % 9th constraint (Utility must be slightly greater than 0 for having an uptake)
-    Aineq9_p = sparse(num_farmers, num_env_out);
+     Aineq9_p = sparse(num_farmers, num_env_out);
     Aineq9_u = -speye(num_farmers) .* T;
     Aineq9_d = kron(speye(num_farmers), ones(1, num_options));
     Aineq9 = [Aineq9_p, Aineq9_u, Aineq9_d];
     Bineq9 = zeros(num_farmers, 1);
     B9_lb = ones(num_farmers, 1) * -Inf;
-    B9_ub = Bineq9;
-    clear Aineq9_p Aineq9_u Aineq9_d
+    B9_ub = Bineq9;    
+    clear Aineq9_p Aineq9_u Aineq9_d    
 
     % 10th constraint (Utility must be slightly greater than 0 for having an uptake)
     q_perm = permute(q, [3, 2, 1]);
