@@ -222,9 +222,11 @@ function [prices, fval, x] =  fcn_test_lp(eq10, b, c, q, budget, elm_options, pa
 %                                         q, ...
 %                                         unit_value_max, ...
 %                                         max_rates);
-                                    
+    
+ 
+                             
     sln = warm_start_prices;
-    idx = 0:length(warm_start_prices)-1;
+    idx = (0:width(sln)-1);
     filename = 'warmstart.mst';
     probname = 'elms_lp';
     fcn_write_warmstart(sln', idx', filename, probname);

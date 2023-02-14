@@ -8,7 +8,8 @@ clear
 %  =========
 carbon_price_string = 'non_trade_central';
 remove_nu_habitat = true;
-sample_size = 'no'; % either 'no' or a number representing the sample size
+rng(20)
+sample_size = 500; % either 'no' or a number representing the sample size
 unscaled_budget = 1e9;
 payment_mechanism = 'fr_env';
 
@@ -35,7 +36,7 @@ for i = 1:width(q)
 end
 
 
-best_rate = fcn_find_warm_start(payment_mechanism, ...
+[best_rates, best_benefits] = fcn_find_warm_start(payment_mechanism, ...
                                         budget, ...
                                         available_elm_options, ...
                                         c, ... 
@@ -44,60 +45,54 @@ best_rate = fcn_find_warm_start(payment_mechanism, ...
                                         unit_value_max, ...
                                         max_rates);
 
-benefits = find_objective_value(warmstart_p, q, c, b, budget, available_elm_options)
-fun = @(x) find_objective_value(x, q, c, b, budget, available_elm_options);
-options = optimset('MaxFunEvals',inf, 'MaxIter', 20000);
+benefits = find_objective_value(best_rates(1, :), q, c, b, budget, available_elm_options)
 
-iters = 100;
-lb = 0.5;
-ub = 1;
-p = lb + (rand(iters, width(q)) .* (ub - lb));
-fvals_nlsearch = zeros(iters, 1);
-prices_nlsearch = zeros(iters, width(q));
-fvals_milp = zeros(iters, 1);
-prices_milp = zeros(iters, width(q));
-
-% Attempt multistart https://uk.mathworks.com/help/gads/how-globalsearch-and-multistart-work.html#bsc9eec
-rrng default % For reproducibility
-opts = optimoptions(@fminsearch,'Algorithm','sqp');
-problem = createOptimProblem('fminsearch','objective',...
-    fun,'x0',3,'lb',-5,'ub',5,'options',opts);
-ms = MultiStart;
-[x,f] = run(ms,problem,20)
+[prices_milp, fval_milp, x_milp] =  fcn_test_lp('yes', b, c, q, budget, available_elm_options, payment_mechanism, unit_value_max, best_rates(1, :));
 
 
-for i = 1:iters
-    fprintf('Searching from price set %i ...\n', i)
-    rate_i = best_rate .* p(i, :);
-    if ~isinf(find_objective_value(rate_i, q, c, b, budget, available_elm_options)) 
-        [x, fval, exitflag, output] = fminsearch(fun, rate_i, options);
-        fvals_nlsearch(i,1) = fval;
-        prices_nlsearch(i, :) = x;
-        if i <= 10
-            [prices_milp(i, :), fvals_milp(i, 1), x_milp] =  fcn_test_lp('yes', b, c, q, budget, available_elm_options, payment_mechanism, unit_value_max, rate_i);
-        end
-    end
-    fprintf('Tot benefits for price set %i = %f \n', [i, fval])
-end
-
-
-nonlin_search = array2table([prices_nlsearch, fvals_nlsearch]);
-nonlin_search.Properties.VariableNames = {'Price01', 'Price02', 'Price03', 'Price04', ...
-                                                'Price05', 'Price06' 'Price07', 'Price08', ...
-                                                'Price09', 'fval'};
-
-milp = array2table([prices_milp, fvals_milp]);
-milp.Properties.VariableNames = {'Price01', 'Price02', 'Price03', 'Price04', ...
-                                                'Price05', 'Price06' 'Price07', 'Price08', ...
-                                                'Price09', 'fval'};
-
-writetable(nonlin_search, 'nonlin_search_500_nobio.csv');
-writetable(milp, 'milp_500_nobio.csv');
+% fun = @(x) find_objective_value(x, q, c, b, budget, available_elm_options);
+% options = optimset('MaxFunEvals',inf, 'MaxIter', 20000);
+% iters = 100;
+% lb = 0.5;
+% ub = 1;
+% p = lb + (rand(iters, width(q)) .* (ub - lb));
+% fvals_nlsearch = zeros(iters, 1);
+% prices_nlsearch = zeros(iters, width(q));
+% fvals_milp = zeros(iters, 1);
+% prices_milp = zeros(iters, width(q));
+% 
+% for i = 1:iters
+%     fprintf('Searching from price set %i ...\n', i)
+%     rate_i = best_rate .* p(i, :);
+%     if ~isinf(find_objective_value(rate_i, q, c, b, budget, available_elm_options)) 
+%         [x, fval, exitflag, output] = fminsearch(fun, rate_i, options);
+%         fvals_nlsearch(i,1) = fval;
+%         prices_nlsearch(i, :) = x;
+%         if i <= 10
+%             [prices_milp(i, :), fvals_milp(i, 1), x_milp] =  fcn_test_lp('yes', b, c, q, budget, available_elm_options, payment_mechanism, unit_value_max, rate_i);
+%         end
+%     end
+%     fprintf('Tot benefits for price set %i = %f \n', [i, fval])
+% end
+% 
+% 
+% nonlin_search = array2table([prices_nlsearch, fvals_nlsearch]);
+% nonlin_search.Properties.VariableNames = {'Price01', 'Price02', 'Price03', 'Price04', ...
+%                                                 'Price05', 'Price06' 'Price07', 'Price08', ...
+%                                                 'Price09', 'fval'};
+% 
+% milp = array2table([prices_milp, fvals_milp]);
+% milp.Properties.VariableNames = {'Price01', 'Price02', 'Price03', 'Price04', ...
+%                                                 'Price05', 'Price06' 'Price07', 'Price08', ...
+%                                                 'Price09', 'fval'};
+% 
+% writetable(nonlin_search, 'nonlin_search_500_nobio.csv');
+% writetable(milp, 'milp_500_nobio.csv');
 
 
 % %% 3) RUN OPTIMISATION
 % %  ===================
-[prices_milp, fval_milp, x_milp] =  fcn_test_lp('yes', b, c, q, budget, available_elm_options, payment_mechanism, unit_value_max, warmstart_p);
+% [prices_milp, fval_milp, x_milp] =  fcn_test_lp('yes', b, c, q, budget, available_elm_options, payment_mechanism, unit_value_max, best_rates(1, :));
 
 
 

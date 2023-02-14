@@ -1,4 +1,4 @@
-function best_rate = fcn_find_warm_start(payment_mechanism_string, ...
+function [best_rates, best_benefits] = fcn_find_warm_start(payment_mechanism_string, ...
                                             budget, ...
                                             elm_options, ...
                                             opp_costs, ... 
@@ -64,7 +64,7 @@ function best_rate = fcn_find_warm_start(payment_mechanism_string, ...
             max_test_benefits_idx = max_test_benefits_idx(max_test_benefits > 0);
             feasible_rates    = [feasible_rates;    test_rates(max_test_benefits_idx(1:min(10,length(max_test_benefits_idx))),:)];
             feasible_benefits = [feasible_benefits; test_benefits(max_test_benefits_idx(1:min(10,length(max_test_benefits_idx))))];
-            if size(feasible_rates,1)>20
+            if size(feasible_rates,1)>40
                 break;
             end
         end
@@ -74,12 +74,39 @@ function best_rate = fcn_find_warm_start(payment_mechanism_string, ...
     % ----------------------------------------------
     fprintf('\n  Refine Search in Feasible Parameter Space: \n  ----------------------------------------- \n');
    
+     
+    for i = 1:5
+        Ngsearch = 1000;
+        num_good = 40;
+        [good_rates, good_benefits] = search_rates_latinHC(Ngsearch, feasible_rates, feasible_benefits, num_env_out, max_rates, num_good, env_outs, costs, benefits, elm_options, budget);    
+
+        % (3) Precise search around best parameters from grid search
+        % ----------------------------------------------------------
+        [best_rates, best_benefits] = search_rates_nonlin_opt(good_rates, good_benefits, max_rates, elm_options, env_outs, costs, benefits, budget);
+        feasible_rates = best_rates;
+        feasible_benefits = best_benefits;
+    end
+    % (4)  Best rate
+    % --------------
+    fprintf('\n  Best prices: \n  ------------ \n');
+
+    [max_best_benefits, max_best_benefits_idx] = max(best_benefits);
+    best_rate     = best_rates(max_best_benefits_idx,:);
+    best_benefit = best_benefits(max_best_benefits_idx,:);
+
+    benefitfunc    = @(p) myfun_ES(p, env_outs, costs, benefits, elm_options);
+    constraintfunc = @(p) mycon_ES(p, env_outs, costs, budget,   elm_options);
+
+    fprintf(['      benefits:       £' sprintf('%s', num2sepstr(-benefitfunc(best_rate),   '%.0f')) '\n']);    
+    fprintf(['      budget surplus: £' sprintf('%s', num2sepstr(constraintfunc(best_rate),'%.0f')) '\n']);    
+    fprintf( '      best price: £%.2f \n', best_rate);      
+end
+
+function [good_rates, good_benefits] = search_rates_latinHC(Ngsearch, feasible_rates, feasible_benefits, num_env_out, max_rates, num_good, env_outs, costs, benefits, elm_options, budget)
+    constraintfunc = @(p) mycon_ES(p, env_outs, costs, budget, elm_options);
     rough_rates    = feasible_rates;
     rough_benefits = feasible_benefits;
-    
-    Ngsearch = 1000;
     LatinHC  = lhsdesign(Ngsearch, num_env_out);
-    
     for jj = 1:size(feasible_rates,1)
         % Set min and max range of Latin Hypercube for each env quant
         test_rates = LatinHC;
@@ -108,15 +135,16 @@ function best_rate = fcn_find_warm_start(payment_mechanism_string, ...
             rough_benefits = [rough_benefits; test_benefits(max_test_benefits_idx(1:min(10,length(max_test_benefits_idx))))];
         end
     end
-    
-    [max_rough_benefits, max_rough_benefits_idx] = sort(rough_benefits, 'descend');
-    good_rates    = rough_rates(max_rough_benefits_idx(1:min(20,length(max_rough_benefits_idx))),:);
-    good_benefits = rough_benefits(max_rough_benefits_idx(1:min(20,length(max_rough_benefits_idx))));
-    
-    % (3) Precise search around best parameters from grid search
-    % ----------------------------------------------------------
-    fprintf('\n  Precise Minimisation from Best Parameters: \n  ------------------------------------------ \n');
 
+    [max_rough_benefits, max_rough_benefits_idx] = sort(rough_benefits, 'descend');
+    good_rates    = rough_rates(max_rough_benefits_idx(1:min(num_good,length(max_rough_benefits_idx))),:);
+    good_benefits = rough_benefits(max_rough_benefits_idx(1:min(num_good,length(max_rough_benefits_idx))));
+end
+
+
+function [best_rates, best_benefits] = search_rates_nonlin_opt(good_rates, good_benefits, max_rates, elm_options, env_outs, costs, benefits, budget)
+    fprintf('\n  Precise Minimisation from Best Parameters: \n  ------------------------------------------ \n');
+    num_env_out = width(env_outs);
     best_rates    = good_rates;
     best_benefits = good_benefits;
    
@@ -143,18 +171,10 @@ function best_rate = fcn_find_warm_start(payment_mechanism_string, ...
         best_benefits = [best_benefits; -fmin_benefit];
     end
     
-    % (4)  Best rate
-    % --------------
     fprintf('\n  Best prices: \n  ------------ \n');
 
-    [max_best_benefits, max_best_benefits_idx] = max(best_benefits);
-    best_rate     = best_rates(max_best_benefits_idx,:);
-    best_benefit = best_benefits(max_best_benefits_idx,:);
+    [max_best_benefits, max_best_benefits_idx] = sort(best_benefits, 'descend');
+    best_rates     = best_rates(max_best_benefits_idx,:);
+    best_benefits = best_benefits(max_best_benefits_idx,:);   
 
-    benefitfunc    = @(p) myfun_ES(p, env_outs, costs, benefits, elm_options);
-    constraintfunc = @(p) mycon_ES(p, env_outs, costs, budget,   elm_options);
-
-    fprintf(['      benefits:       £' sprintf('%s', num2sepstr(-benefitfunc(best_rate),   '%.0f')) '\n']);    
-    fprintf(['      budget surplus: £' sprintf('%s', num2sepstr(constraintfunc(best_rate),'%.0f')) '\n']);    
-    fprintf( '      best price: £%.2f \n', best_rate);      
 end
