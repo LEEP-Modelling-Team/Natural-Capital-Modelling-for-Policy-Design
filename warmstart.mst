@@ -3,16 +3,15 @@
  <CPLEXSolution version="1.2">
   <header problemName="elms_lp" solutionsutionName="m1" solutionsutionIndex="1" MIPStartEffortLevel="4" writeLevel="1"/>
   <variables>
-   <variable index="0" value="30.697063"/>
-   <variable index="1" value="29.489968"/>
-   <variable index="2" value="231.364268"/>
-   <variable index="3" value="275.807608"/>
-   <variable index="4" value="3.407581"/>
-   <variable index="5" value="6259689.440119"/>
-   <variable index="6" value="1203763.016939"/>
-   <variable index="7" value="3090373.934498"/>
-   <variable index="8" value="129.259941"/>
-   <variable index="9" value="0.000000"/>
+   <variable index="0" value="26.975475"/>
+   <variable index="1" value="317.921733"/>
+   <variable index="2" value="126.035441"/>
+   <variable index="3" value="14.806158"/>
+   <variable index="4" value="53.492458"/>
+   <variable index="5" value="693790.061759"/>
+   <variable index="6" value="891442.444733"/>
+   <variable index="7" value="22665977.554554"/>
+   <variable index="8" value="96.343830"/>
   </variables>
  </CPLEXSolution>
 </CPLEXSolutions>
