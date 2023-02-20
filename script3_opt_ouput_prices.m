@@ -37,7 +37,7 @@ end
 
 % 2. Iterate through data samples to identify price ranges
 % --------------------------------------------------------
-Niter = 2;
+Niter = 10;
 
 for iter = 1:Niter
 
