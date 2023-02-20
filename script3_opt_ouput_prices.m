@@ -20,7 +20,6 @@ data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
 data_path = [data_folder, 'Script 2 (ELM Option Runs)/elm_option_results_', carbon_price_string, '.mat'];
 
 sample_size = 5000; % either 'no' or a number representing the sample size
-sample_size = 100; % either 'no' or a number representing the sample size
 
 if sample_size > 1000
     eval(['matfile_name = ''prices_' num2str(round(sample_size/1000)) 'k_sample.mat'';']);
@@ -38,7 +37,7 @@ end
 
 % 2. Iterate through data samples to identify price ranges
 % --------------------------------------------------------
-Niter = 1;
+Niter = 2;
 
 for iter = 1:Niter
 
@@ -92,14 +91,15 @@ for iter = 1:Niter
 
     % (e) MIP for global optimum
     % --------------------------  
-    price_lb = min(prices_locopt)' * 0;
-    price_ub = max(prices_locopt)' * 1.25;
+    prices_lb = min(prices_locopt)' * 0;
+    prices_ub = max(prices_locopt)' * 1.25;
 
     uptake_locopt = myfun_uptake(prices_locopt(1, :), q, c, elm_options)';
     uptake_locopt = uptake_locopt(:)';
     
-    [x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, prices_locopt(1, :), uptake_locopt, price_lb, price_ub);
-
+    cplex_time = 1800;
+    [x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_time);
+                                                                  
     mfile.prices(iter, 1:numP) = prices_milp;
     mfile.benefits(iter,1)     = fval_milp;
         
@@ -112,7 +112,6 @@ sample_size = 'no';  % all data
 
 % (a) Load data
 % -------------
-sample_size = 1000;
 [b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat);
 q(:, 10, :) = [];    
 
@@ -160,8 +159,7 @@ uptake_locopt = myfun_uptake(prices_locopt(1, :), q, c, elm_options)';
 uptake_locopt = uptake_locopt(:)';
 
 cplex_time = 61200;
-[x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b1, c1, q1, budget, prices_locopt(1, :), uptake_locopt1, prices_lb, prices_ub, cplex_time);
-
+[x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_time);
 
 
 % 4. Save Solution
