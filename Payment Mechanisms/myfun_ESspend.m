@@ -13,7 +13,8 @@ function x = myfun_ESspend(p, ES, C, bc, elm_option)
         else
             payment       = p*ES(:, :, i)';
             profit(:,i+1) = payment - C(:,i)';
-            spend(:,i+1)  = payment;
+            spend(:,i+1)  = payment;            
+        end
     end
            
     [~, max_profit_col_idx] = max(profit,[],2);

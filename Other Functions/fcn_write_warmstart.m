@@ -40,14 +40,6 @@ function fcn_write_warmstart(sln, idx, filename, probname)
         fprintf(fid, '  </variables>\n');
         fprintf(fid, ' </CPLEXSolution>\n');
     end   
-    for k = 1:nslns
-        fprintf(' <CPLEXSolution version="1.2">\n');
-        fprintf('  <header problemName="%s" solutionsutionName="m%u" solutionsutionIndex="%u" MIPStartEffortLevel="4" writeLevel="1"/>\n', probname, k, k);           
-        fprintf('  <variables>\n');
-        fprintf('   <variable index="%u" value="%f"/>\n', [idx full(sln(:,k))]');
-        fprintf('  </variables>\n');
-        fprintf(' </CPLEXSolution>\n');
-    end   
     fprintf(fid, '</CPLEXSolutions>\n');
 
 end

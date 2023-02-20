@@ -1,9 +1,11 @@
-% script3_run_search_for_prices.m
+% script3_opt_output_prices.m
 % ===============================
-%  Run search algorithm / scattergun approach to find optimum prices for
-%  different payment mechanisms and budgets
+%  Search for optimum flat rateprices for different payment mechanisms and 
+%  budgets
+
 clear
 rng(23112010)
+
 
 % 1. Initialise
 % -------------
@@ -32,6 +34,7 @@ if ~isfile(matfile_name)
     mfile.benefits      = [];
 end
 
+
 % 2. Iterate through data samples to identify price ranges
 % --------------------------------------------------------
 Niter = 1;
@@ -41,7 +44,7 @@ for iter = 1:Niter
     
     % (a) Load new sample of data
     % ---------------------------
-    [b, c, q, budget, elm_options, unit_value_max] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat);
+    [b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat);
     q(:, 10, :) = [];    
     
     
@@ -108,7 +111,7 @@ sample_size = 'no';  % all data
 
 % (a) Load data
 % -------------
-[b, c, q, budget, elm_options, unit_value_max] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat);
+[b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat);
 q(:, 10, :) = [];    
 
 % (b) Price bounds from sample searches
@@ -158,6 +161,7 @@ cplex_time = 61200;
 [x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b1, c1, q1, budget, prices_locopt(1, :), uptake_locopt1, prices_lb, prices_ub, cplex_time);
 
 
+
 % 4. Save Solution
 % ----------------
 solution.x             = x_milp;
@@ -167,6 +171,7 @@ solution.exitflag      = exitflag;
 solution.prices_locopt = prices_locopt;
 solution.prices_lb     = prices_lb;
 solution.prices_ub     = prices_ub;
+solution.new2kid       = new2kid;
 
-
+save('solution_env_out_prices.mat', 'solution');
 
