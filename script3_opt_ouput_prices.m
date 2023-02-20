@@ -20,6 +20,7 @@ data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
 data_path = [data_folder, 'Script 2 (ELM Option Runs)/elm_option_results_', carbon_price_string, '.mat'];
 
 sample_size = 5000; % either 'no' or a number representing the sample size
+sample_size = 100; % either 'no' or a number representing the sample size
 
 if sample_size > 1000
     eval(['matfile_name = ''prices_' num2str(round(sample_size/1000)) 'k_sample.mat'';']);
@@ -111,6 +112,7 @@ sample_size = 'no';  % all data
 
 % (a) Load data
 % -------------
+sample_size = 1000;
 [b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat);
 q(:, 10, :) = [];    
 
@@ -173,5 +175,5 @@ solution.prices_lb     = prices_lb;
 solution.prices_ub     = prices_ub;
 solution.new2kid       = new2kid;
 
-save('solution_env_out_prices.mat', 'solution');
+% save('solution_env_out_prices.mat', 'solution');
 

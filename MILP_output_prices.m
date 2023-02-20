@@ -9,9 +9,15 @@
 
 %  Inputs
 %  ------
-%    b     [N x Np]  
-
-
+%    b                  [num_farmers x num_options] benefits from each option 
+%    c                  [num_farmers x num_options] costs of each option 
+%    q                  [num_farmers x num_env_out x num_options] quantities of env outs from each option  
+%    budget             Maximum spend   
+%    warm_start_prices  [1 x num_env_out] vector of best starting prices
+%    warm_start_uptake  [1 x num_farmers*num_options] vector of uptake at warm_start_prices 
+%    prices_lb          [1 x num_env_out] vector of lower bount on prices
+%    prices_ub          [1 x num_env_out] vector of upper bount on prices
+%    cplex_time         seconds to allow cplex to run before terminate
 
 function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, warm_start_prices, warm_start_uptake, price_lb, price_ub, cplex_time)
     
