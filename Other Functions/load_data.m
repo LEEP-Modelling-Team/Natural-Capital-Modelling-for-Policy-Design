@@ -1,4 +1,4 @@
-function [b, c, q, budget,available_elm_options, new2kid] = load_data(sample_num, unscaled_budget, data_path, remove_nu_habitat)
+function [b, c, q, budget,available_elm_options, new2kid] = load_data(sample_num, unscaled_budget, data_path, remove_nu_habitat, payment_mechanism)
 
     % (1) Set up
     %  ==========
@@ -62,7 +62,7 @@ function [b, c, q, budget,available_elm_options, new2kid] = load_data(sample_num
         farmer_sample_ind = (farmer_perm <= sample_num)';
         budget = unscaled_budget ./ cell_info.ncells .* sample_num;
     elseif strcmp(sample_num, 'no')
-        farmer_sample_ind = ones(cell_info.ncells,1);
+        farmer_sample_ind = logical(ones(cell_info.ncells,1));
         budget = unscaled_budget;
     else
         fprintf('''sample_num'' can only assume a numeric value or ''no'' if no sampling is required\n'); 
@@ -120,10 +120,18 @@ function [b, c, q, budget,available_elm_options, new2kid] = load_data(sample_num
         env_outs.(available_elm_options{k}) = env_outs_year.(available_elm_options{k})(farmer_sample_ind, :);
         es_outs.(available_elm_options{k})  = es_outs_year.(available_elm_options{k})(farmer_sample_ind, :);
     end
-    q = cat(3, env_outs.arable_reversion_sng_access,    env_outs.destocking_sng_access,...
-               env_outs.arable_reversion_wood_access,   env_outs.destocking_wood_access,...
-               env_outs.arable_reversion_sng_noaccess,  env_outs.destocking_sng_noaccess,...
-               env_outs.arable_reversion_wood_noaccess, env_outs.destocking_wood_noaccess);
+    switch payment_mechanism
+        case 'fr_env'
+            q = cat(3, env_outs.arable_reversion_sng_access,    env_outs.destocking_sng_access,...
+                       env_outs.arable_reversion_wood_access,   env_outs.destocking_wood_access,...
+                       env_outs.arable_reversion_sng_noaccess,  env_outs.destocking_sng_noaccess,...
+                       env_outs.arable_reversion_wood_noaccess, env_outs.destocking_wood_noaccess);
+        case 'fr_es'
+             q = cat(3, es_outs.arable_reversion_sng_access,    es_outs.destocking_sng_access,...
+                       es_outs.arable_reversion_wood_access,   es_outs.destocking_wood_access,...
+                       es_outs.arable_reversion_sng_noaccess,  es_outs.destocking_sng_noaccess,...
+                       es_outs.arable_reversion_wood_noaccess, es_outs.destocking_wood_noaccess);
+    end
     c = c .* markup;
     new2kid = cell_info.new2kid;
     

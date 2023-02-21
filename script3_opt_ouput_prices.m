@@ -13,18 +13,19 @@ carbon_price_string = 'non_trade_central';
 remove_nu_habitat = true;
 
 unscaled_budget = 1e9;
-payment_mechanism = 'fr_env';
+payment_mechanism = 'fr_es';
 numP = 9;
 
-data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
+% data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
+data_folder = 'D:\Documents\Data\Defra-ELMS\';
 data_path = [data_folder, 'Script 2 (ELM Option Runs)/elm_option_results_', carbon_price_string, '.mat'];
 
 sample_size = 5000; % either 'no' or a number representing the sample size
 
 if sample_size > 1000
-    eval(['matfile_name = ''prices_' num2str(round(sample_size/1000)) 'k_sample.mat'';']);
+    eval(['matfile_name = ''prices_' payment_mechanism '_' num2str(round(sample_size/1000)) 'k_sample.mat'';']);
 else
-    eval(['matfile_name = ''prices_' num2str(round(sample_size)) '_sample.mat'';']);
+    eval(['matfile_name = ''prices_' payment_mechanism '_' num2str(round(sample_size)) '_sample.mat'';']);
 end
 mfile = matfile(matfile_name, 'Writable', true);
 if ~isfile(matfile_name)
@@ -39,12 +40,12 @@ end
 % --------------------------------------------------------
 Niter = 10;
 
-for iter = 1:Niter
+for iter = 3:Niter
 
     
     % (a) Load new sample of data
     % ---------------------------
-    [b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat);
+    [b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat, payment_mechanism);
     q(:, 10, :) = [];    
     
     
@@ -53,9 +54,13 @@ for iter = 1:Niter
     constraintfunc = @(p) mycon_ES(p, q, c, budget, elm_options);
     prices_max = zeros(1, numP);
     start_rate = 5;
-    for i = 1:numP
-        env_outs_array_i = squeeze(q(:, i, :));
-        prices_max(i) = fcn_lin_search(numP,i,start_rate,0.01,constraintfunc,q,c,budget,elm_options);
+    if strcmp(payment_mechanism, 'fr_env')
+        for i = 1:numP
+            env_outs_array_i = squeeze(q(:, i, :));
+            prices_max(i) = fcn_lin_search(numP,i,start_rate,0.01,constraintfunc,q,c,budget,elm_options);
+        end
+    elseif strcmp(payment_mechanism, 'fr_es')
+        prices_max = ones(1, numP);
     end
     prices_min = zeros(size(prices_max));
 
@@ -112,12 +117,12 @@ sample_size = 'no';  % all data
 
 % (a) Load data
 % -------------
-[b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat);
+[b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat, payment_mechanism);
 q(:, 10, :) = [];    
 
 % (b) Price bounds from sample searches
 % -------------------------------------
-matfile_name = 'prices_5k_sample.mat';
+matfile_name = ['prices_' payment_mechanism '_5k_sample.mat'];
 load(matfile_name, 'prices');
 
 prices_lb = min(prices)';
@@ -173,5 +178,11 @@ solution.prices_lb     = prices_lb;
 solution.prices_ub     = prices_ub;
 solution.new2kid       = new2kid;
 
-% save('solution_env_out_prices.mat', 'solution');
+if strcmp(payment_mechanism, 'fr_env')
+    save('solution_env_out_prices.mat', 'solution');
+elseif strcmp(payment_mechanism, 'fr_es')
+    save('solution_es_out_prices.mat', 'solution');
+else
+    error('payment mechanism can only be ''fr_env'' or ''fr_es''')
+end
 
