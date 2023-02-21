@@ -4,7 +4,7 @@
 
 % Modify the parent_dir to location of Model Data in your workstation
 function paths = fcn_set_data_paths()
-    parent_dir                       = 'D:\Documents\Data\NEV\Model Data\';
+    parent_dir                       = 'D:\myGitHub\NEV\Model Data\';
 
     paths.agriculture_data_folder          = [parent_dir, 'Agriculture\'];
     paths.agricultureghg_data_folder       = [parent_dir, 'GHG\'];
