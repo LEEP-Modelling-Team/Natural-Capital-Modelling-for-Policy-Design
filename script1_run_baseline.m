@@ -43,7 +43,6 @@ conn = fcn_connect_database(server_flag);
 % Set other default parameters
 MP = fcn_set_model_parameters(json, server_flag, parameters);
 
-
 % Connect to NEV Model
 % --------------------
 NEV.path_code       = 'D:/myGitHub/NEV/';
@@ -97,23 +96,30 @@ landuse_ha_change = zeros(cell_info.ncells, 5);
 % (a) Agriculture (+ GHG)
 % -----------------------
 if MP.run_agriculture
+    landuses.new2kid = PV.new2kid;
+    landuses.farm_ha = PV.farm_ha;
     es_agriculture = fcn_run_agriculture(MP.agriculture_data_folder, ...
                                          MP.climate_data_folder, ...
                                          MP.agricultureghg_data_folder, ...
                                          MP, ...
-                                         PV, ...
+                                         landuses, ...
                                          carbon_price(1:40));
 end
 
 % (b) Forestry (+ GHG)
 % --------------------
 if MP.run_forestry
+    landuses_chg.new2kid         = PV.new2kid;
+    landuses_chg.wood_ha_chg     = zeros(cell_info.ncells, 1);
+    landuses_chg.sngrass_ha_chg  = zeros(cell_info.ncells, 1);
+    landuses_chg.arable_ha_chg   = zeros(cell_info.ncells, 1);
+    landuses_chg.tgrass_ha_chg   = zeros(cell_info.ncells, 1);
+    landuses_chg.pgrass_ha_chg   = zeros(cell_info.ncells, 1);
+    landuses_chg.rgraz_ha_chg    = zeros(cell_info.ncells, 1);    
     es_forestry = fcn_run_forestry(MP.forest_data_folder, ...
                                    MP.forestghg_data_folder, ...
                                    MP, ...
-                                   PV, ...
-                                   landuse_ha_change, ...
-                                   es_agriculture, ...
+                                   landuses_chg, ...
                                    carbon_price);
 end
 
@@ -156,8 +162,9 @@ end
 % JNCC
 if MP.run_biodiversity_jncc
     es_biodiversity_jncc = fcn_run_biodiversity_jncc(MP.biodiversity_data_folder_jncc, ...
-                                                     PV, ...
-                                                     out);
+                                                     out, ...
+                                                     'future', ...
+                                                     'baseline');
 end
 
 % UCL
@@ -231,5 +238,5 @@ baseline.pollinator_sr_50 = es_biodiversity_ucl.pollinator_sr_50;
 %% (6) Save baseline results to .mat file
 %  ======================================
 % Depends on what carbon price has been used
-save(['Script 1 (Baseline Runs)/baseline_results_', MP.carbon_price, '.mat'], 'baseline');
+save([MP.paths.data_out 'baseline_results_', MP.carbon_price, '.mat'], 'baseline');
 
