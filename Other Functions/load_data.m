@@ -1,4 +1,4 @@
-function [b, c, q, budget,available_elm_options, new2kid] = load_data(sample_num, unscaled_budget, data_path, remove_nu_habitat, payment_mechanism)
+function [b, c, q, budget, available_elm_options, new2kid] = load_data(sample_num, unscaled_budget, data_path, remove_nu_habitat, payment_mechanism)
 
     % (1) Set up
     %  ==========
@@ -17,6 +17,12 @@ function [b, c, q, budget,available_elm_options, new2kid] = load_data(sample_num
     % Generated in script2_run_elm_options.m
     % Depends on carbon price
     load(data_path);
+    
+    
+    
+    
+    
+    
     
 
     % Load 2km grid cells in England
@@ -62,7 +68,7 @@ function [b, c, q, budget,available_elm_options, new2kid] = load_data(sample_num
         farmer_sample_ind = (farmer_perm <= sample_num)';
         budget = unscaled_budget ./ cell_info.ncells .* sample_num;
     elseif strcmp(sample_num, 'no')
-        farmer_sample_ind = logical(ones(cell_info.ncells,1));
+        farmer_sample_ind = true(cell_info.ncells,1);
         budget = unscaled_budget;
     else
         fprintf('''sample_num'' can only assume a numeric value or ''no'' if no sampling is required\n'); 

@@ -16,8 +16,8 @@ unscaled_budget = 1e9;
 payment_mechanism = 'fr_es';
 numP = 9;
 
-% data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
-data_folder = 'D:\Documents\Data\Defra-ELMS\';
+data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
+% data_folder = 'D:\Documents\Data\Defra-ELMS\';
 data_path = [data_folder, 'Script 2 (ELM Option Runs)/elm_option_results_', carbon_price_string, '.mat'];
 
 sample_size = 5000; % either 'no' or a number representing the sample size
