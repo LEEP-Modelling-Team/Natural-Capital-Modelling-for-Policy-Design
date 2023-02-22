@@ -238,5 +238,5 @@ baseline.pollinator_sr_50 = es_biodiversity_ucl.pollinator_sr_50;
 %% (6) Save baseline results to .mat file
 %  ======================================
 % Depends on what carbon price has been used
-save([MP.paths.data_out 'baseline_results_', MP.carbon_price, '.mat'], 'baseline');
+save([MP.data_out 'baseline_results_', MP.carbon_price, '.mat'], 'baseline');
 

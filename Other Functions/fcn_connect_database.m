@@ -26,11 +26,11 @@ function conn = fcn_connect_database(server_flag)
         end
         
         % Database connection
-        DB.datasource  = 'nev';
+        DB.datasource  = 'NEV';
         DB.username    = 'postgres';
         DB.password    = 'postgres';
         DB.driver      = 'org.postgresql.Driver';
-        DB.url         = 'jdbc:postgresql://localhost:5432/nev';
+        DB.url         = 'jdbc:postgresql://localhost:5432/NEV';
         conn           = database(DB.datasource,DB.username,DB.password,DB.driver,DB.url);
         
     end

@@ -8,7 +8,7 @@ clear
 % Set carbon price
 % carbon_price_string = 'scc';
 % carbon_price_string = 'non_trade_low';
-carbon_price_string = 'non_trade_central';
+carbon_price_string = 'scc';
 
 % Set proportion of non use values to take
 % non_use_proportion = 1e-4;
@@ -78,9 +78,37 @@ conn = fcn_connect_database(server_flag);
 % Set other default parameters
 MP = fcn_set_model_parameters(json, server_flag, parameters);
 
+% Connect to NEV Model
+% --------------------
+NEV.path_code       = 'D:/myGitHub/NEV/';
+NEV.path_data_in    = 'D:/myGitHub/NEV/Model Data/';
+NEV.path_data_water = 'D:/myGitHub/water-runs/MAT Files/';
+addpath(genpath(NEV.path_code))
+
 % Get carbon prices
 % -----------------
-carbon_price = fcn_get_carbon_price(conn, MP.carbon_price);
+if strcmp(MP.carbon_price,'scc')
+    % Read in SCC from:
+    %   Technical Support Document: Social Cost of Carbon, Methane, and Nitrous Oxide
+    %   Interim Estimates under Executive Order 13990
+    %   Interagency Working Group on Social Cost of Greenhouse Gases, United States Government 
+    %   Feb 2021
+    %     Data is from 2020 to 2050 and in $US 2020 per tonne CO2 we use 
+    %     the average estimate at 3% discount rate
+    scc_data_file = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\scc\tsd_2021_annual_unrounded.csv';
+    scc_table     = readtable(scc_data_file);
+    carbon_price  = scc_table.x3_0__CO2;
+    % Extend to 300 years.
+    %  (i)  persist price growth until 2100
+    %  (ii) maintain same scc from 2100 to 2320 as per UK time series
+    incr   = carbon_price(end)-carbon_price(end-1);
+    carbon_price = [carbon_price; (carbon_price(end):incr:(carbon_price(end)+incr*(50-1)))'];
+    carbon_price = [carbon_price; repelem(carbon_price(end), 220)'];
+    % convert from dollars to pounds at 2020 exchange rate
+    carbon_price = carbon_price/1.2837;    
+else
+    carbon_price = fcn_get_carbon_price(conn, MP.carbon_price);
+end
 
 % Calculate discount constants
 % ----------------------------
@@ -102,8 +130,7 @@ PV_original = fcn_import_primary_variables(conn, cell_info);
 % Created in script1_run_baseline.m script
 % Depends on what carbon price has been used
 % Used to calculate benefit under each ELM option scenario
-data_folder = 'D:\Documents\Data\Defra-ELMS\';
-data_path = [data_folder, 'Script 1 (Baseline Runs)/baseline_results_', carbon_price_string, '.mat'];
+data_path = [MP.data_out, 'baseline_results_', carbon_price_string, '.mat'];
 load(data_path);
 
 % Load water results and related information
@@ -116,7 +143,7 @@ load(data_path);
 
 % Water transfer results, including water quality, non-use and flooding
 % (created running scripts 1 to 6 in Water_Runs)
-[water_transfer_results, water_transfer_cell2subctch, nfm_data] = fcn_import_water_transfer_info(conn);
+[water_transfer_results, water_transfer_cell2subctch, nfm_data] = fcn_import_water_transfer_info(conn, NEV);
 
 % % Flooding (created in run_flooding_transfer_results.m script)
 % [flooding_results_transfer, flooding_cell2subctch, nfm_data] = fcn_import_flooding_transfer_info(conn);
@@ -189,27 +216,26 @@ end
 % (c) Run recreation with substitution
 % ------------------------------------
 % This is done for all ELM options, hence outside the ELM option loop
-dorecmodel = false;
+dorecmodel = false; % true to run if not in Data folder
 rec_all_options = fcn_run_recreation_all_options(dorecmodel, cell_info, MP, conn);
 
 % (d) Main loop over ELM options
 % ------------------------------    
 for option_i = 1:num_elm_options
+    
     elm_option = available_elm_options{option_i};
     disp(elm_option)
 
-    %% (a) Implement this ELM option
+    % (a) Implement this ELM option
     %  -----------------------------
     % PV_updated contains the updated land covers
-    [PV_updated, ...
-        elm_ha_option, ...
-        scheme_length_option, ...
-        site_type_option] = fcn_implement_elm_option(conn, ...
-                                                     elm_option, ...
-                                                     cell_info, ...
-                                                     PV_original, ...
-                                                     MP, ...
-                                                     carbon_price(1:40));
+    [PV_updated, elm_ha_option, scheme_length_option, site_type_option] ...
+           = fcn_implement_elm_option(conn, ...
+                                      elm_option, ...
+                                      cell_info, ...
+                                      PV_original, ...
+                                      MP, ...
+                                      carbon_price(1:40));
     
     % Save ELM hectares to elm_ha table
     elm_ha.(elm_option) = elm_ha_option;
@@ -221,13 +247,13 @@ for option_i = 1:num_elm_options
                          PV_updated.urban_ha - PV_original.urban_ha, ...
                          PV_updated.water_ha - PV_original.water_ha];
     
-    %% (b) Run agriculture, forestry and GHG models
+    % (b) Run agriculture, forestry and GHG models
     %  --------------------------------------------
     % (i) Agriculture (+ GHG)
 	% -----------------------
     if MP.run_agriculture
         % Use fcn_run_agriculture_elms function (not NEVO function)
-        % Need to pass in PV_original as farmer not allowed to reoptimise
+        % Need to pass in PV_original as farmer not allowed to reoptimise   
         es_agriculture = fcn_run_agriculture_elms(MP.agriculture_data_folder, ...
                                                   MP.climate_data_folder, ...
                                                   MP.agricultureghg_data_folder, ...
@@ -255,7 +281,7 @@ for option_i = 1:num_elm_options
     % Create decadal output in 2020-2029, 2030-2039, 2040-2049, 2050-2059
     out = fcn_collect_output(MP, PV_updated, es_agriculture, es_forestry, carbon_price);
     
-    %% (c) Run additional models based on averaged decadal output
+    % (c) Run additional models based on averaged decadal output
     %  ----------------------------------------------------------
     % (i) Recreation
 	% --------------
@@ -282,12 +308,12 @@ for option_i = 1:num_elm_options
 	% -----------------
     % JNCC
     if MP.run_biodiversity_jncc
-        es_biodiversity_jncc = fcn_run_biodiversity_jncc(MP.biodiversity_data_folder_jncc, PV_updated, out);
+        es_biodiversity_jncc = fcn_run_biodiversity_jncc(MP.biodiversity_data_folder_jncc, out, 'future', 'baseline');
     end
     
     % UCL
     if MP.run_biodiversity_ucl
-        es_biodiversity_ucl = fcn_run_biodiversity_ucl_old(MP.biodiversity_data_folder, out, 'rcp60', 'baseline');
+        es_biodiversity_ucl = fcn_run_biodiversity_ucl(MP.biodiversity_data_folder, out, 'rcp60', 'baseline');
     end
     
     % (iii) Pollination

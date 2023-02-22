@@ -4,6 +4,7 @@
 
 % Modify the parent_dir to location of Model Data in your workstation
 function paths = fcn_set_data_paths()
+    
     parent_dir = 'D:\myGitHub\';
     defra_dir  = 'defra-elms\';
     nev_dir    = 'NEV\Model Data\';
