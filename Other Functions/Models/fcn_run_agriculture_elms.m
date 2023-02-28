@@ -1,5 +1,5 @@
-%% FCN_RUN_AGRICULTURE
-%  ===================
+% FCN_RUN_AGRICULTURE
+% ===================
 %
 % INPUTS:
 %
@@ -24,16 +24,9 @@
 % es_agriculture
 %   - structure containing...
 
-function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
-                                                   climate_data_folder, ...
-                                                   agricultureghg_data_folder, ...
-                                                   parameters, ...
-                                                   landuses, ...
-                                                   carbon_price, ...
-                                                   elm_option_string, ...
-                                                   elm_ha)
-
-    %% (1) INITIALISE
+function es_agriculture = fcn_run_agriculture_elms(MP, landuses, elm_option_string, elm_ha)
+   
+    % (1) INITIALISE
     %  ==============
     
     % a. Constants
@@ -42,23 +35,23 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
     ncells = length(landuses.new2kid);
     
     % Discount and annuity constants
-    delta  = 1 / (1 + parameters.discount_rate);
-    delta_data_yrs = (delta .^ (1:parameters.num_years))';	% discount vector for data years
-    gamma_data_yrs = parameters.discount_rate / (1 - (1 + parameters.discount_rate) ^ (-parameters.num_years)); % annuity constant for data years
+    delta  = 1 / (1 + MP.discount_rate);
+    delta_data_yrs = (delta .^ (1:MP.num_years))';	% discount vector for data years
+    gamma_data_yrs = MP.discount_rate / (1 - (1 + MP.discount_rate) ^ (-MP.num_years)); % annuity constant for data years
     
     % (b) Data files 
     % --------------
-    AgricultureProduction_data_mat = strcat(agriculture_data_folder, 'AgricultureProduction_data.mat');
-    Climate_data_mat =  strcat(climate_data_folder, 'Climate_data.mat');
-    AgricultureGHG_data_mat = strcat(agricultureghg_data_folder, 'AgricultureGHG_data.mat');
+    AgricultureProduction_data_mat = strcat(MP.agriculture_data_folder, 'AgricultureProduction_data.mat');
+    Climate_data_mat               = strcat(MP.climate_data_folder, 'Climate_data.mat');
+    AgricultureGHG_data_mat        = strcat(MP.agricultureghg_data_folder, 'AgricultureGHG_data.mat');
     load(AgricultureProduction_data_mat, 'AgricultureProduction');
     load(Climate_data_mat, 'ClimateData');
     ClimateData = ClimateData.grow_restrict;
-    if parameters.run_ghg
+    if MP.run_ghg
         load(AgricultureGHG_data_mat, 'AgricultureGHG');
         % Check if the size of AgricultureGHG is consistent with the number
         % of years
-        if (size(AgricultureGHG.EmissionsLivestockPerHead.dairy,2) ~= parameters.num_years)
+        if (size(AgricultureGHG.EmissionsLivestockPerHead.dairy,2) ~= MP.num_years)
             error('Rerun imports for AgricultureGHG such that the number of years matches parameters.num_years');
         end
     end
@@ -66,19 +59,19 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
     % (c) Deal with climate scenarios
     % -------------------------------
     % Check climate scenario is possible
-    user_defined_temp = ['Climate_cells_', parameters.clim_string, '_', parameters.clim_scen_string, '_temp_', parameters.temp_pct_string];
-    user_defined_rain = ['Climate_cells_', parameters.clim_string, '_', parameters.clim_scen_string, '_rain_', parameters.rain_pct_string];
+    user_defined_temp = ['Climate_cells_', MP.clim_string, '_', MP.clim_scen_string, '_temp_', MP.temp_pct_string];
+    user_defined_rain = ['Climate_cells_', MP.clim_string, '_', MP.clim_scen_string, '_rain_', MP.rain_pct_string];
     
     if isfield(ClimateData, user_defined_temp) ~= 1 || isfield(ClimateData, user_defined_rain) ~= 1
         error('foo:bar', 'The climate data loaded and the climate data declared in the import functions do not match.\nMake sure you are using the same climate scenarios in the import modules and the agricultural model!\nSUGGESTION: You might need to re-run the imports')
     end
     
     % Extract temperature and rainfall for this scenario and combine
-    temp = ClimateData.(['Climate_cells_', parameters.clim_string, '_', parameters.clim_scen_string, '_temp_', parameters.temp_pct_string]);
-    rain = ClimateData.(['Climate_cells_', parameters.clim_string, '_', parameters.clim_scen_string, '_rain_', parameters.rain_pct_string]);
+    temp = ClimateData.(['Climate_cells_', MP.clim_string, '_', MP.clim_scen_string, '_temp_', MP.temp_pct_string]);
+    rain = ClimateData.(['Climate_cells_', MP.clim_string, '_', MP.clim_scen_string, '_rain_', MP.rain_pct_string]);
     
-    temp = temp(:, fcn_select_years('temp', parameters.start_year:(parameters.start_year + parameters.num_years -1)));
-    rain = rain(:, fcn_select_years('rain', parameters.start_year:(parameters.start_year + parameters.num_years -1)));
+    temp = temp(:, fcn_select_years('temp', MP.start_year:(MP.start_year + MP.num_years -1)));
+    rain = rain(:, fcn_select_years('rain', MP.start_year:(MP.start_year + MP.num_years -1)));
     ClimateData.Climate_cells = [temp, rain];   
 
 %     
@@ -88,7 +81,7 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
 %     AgricultureProduction.Climate_cells = [AgricultureProduction.Climate_cells_ukcp09_a1b_rain_50, ...
 %                                            AgricultureProduction.Climate_cells_ukcp09_a1b_temp_50];
     
-    %% (2) Reduce to inputted 2km cells
+    % (2) Reduce to inputted 2km cells
     %  ================================
     % For inputted 2km grid cells, extract rows of relevant tables and
     % arrays in structures
@@ -106,7 +99,7 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
         
     % (a) AgricultureGHG
     % ------------------
-    if parameters.run_ghg
+    if MP.run_ghg
         [input_cells_ind, input_cell_idx] = ismember(landuses.new2kid, AgricultureGHG.new2kid);
         input_cell_idx                    = input_cell_idx(input_cells_ind);
         
@@ -120,7 +113,7 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
     end
     
     
-    %% (3) Check price parameters and convert it to vectors
+    % (3) Check price parameters and convert it to vectors
     %  Price vectors should start from prices in the year before
     %  current_year and end at the last year, i.e. with length num_years +
     %  1, or expressed as a scalar
@@ -131,29 +124,29 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
     %  ===========================================
     
     % Arable
-    parameters.price_wheat  = fcn_vector_price_series(parameters.price_wheat, parameters.num_years + 1);
-    parameters.price_osr    = fcn_vector_price_series(parameters.price_osr,   parameters.num_years + 1);
-    parameters.price_wbar   = fcn_vector_price_series(parameters.price_wbar,  parameters.num_years + 1);
-    parameters.price_sbar   = fcn_vector_price_series(parameters.price_sbar,  parameters.num_years + 1);
-    parameters.price_pot    = fcn_vector_price_series(parameters.price_pot,   parameters.num_years + 1);
-    parameters.price_sb     = fcn_vector_price_series(parameters.price_sb,    parameters.num_years + 1);
-    parameters.price_other  = fcn_vector_price_series(parameters.price_other, parameters.num_years + 1);
+    MP.price_wheat  = fcn_vector_price_series(MP.price_wheat, MP.num_years + 1);
+    MP.price_osr    = fcn_vector_price_series(MP.price_osr,   MP.num_years + 1);
+    MP.price_wbar   = fcn_vector_price_series(MP.price_wbar,  MP.num_years + 1);
+    MP.price_sbar   = fcn_vector_price_series(MP.price_sbar,  MP.num_years + 1);
+    MP.price_pot    = fcn_vector_price_series(MP.price_pot,   MP.num_years + 1);
+    MP.price_sb     = fcn_vector_price_series(MP.price_sb,    MP.num_years + 1);
+    MP.price_other  = fcn_vector_price_series(MP.price_other, MP.num_years + 1);
     
     % Grassland
-    parameters.price_dairy  = fcn_vector_price_series(parameters.price_dairy, parameters.num_years + 1);
-    parameters.price_beef   = fcn_vector_price_series(parameters.price_beef,  parameters.num_years + 1);
-    parameters.price_sheep  = fcn_vector_price_series(parameters.price_sheep, parameters.num_years + 1);
+    MP.price_dairy  = fcn_vector_price_series(MP.price_dairy, MP.num_years + 1);
+    MP.price_beef   = fcn_vector_price_series(MP.price_beef,  MP.num_years + 1);
+    MP.price_sheep  = fcn_vector_price_series(MP.price_sheep, MP.num_years + 1);
     
     % Livestock gross margins
-    parameters.gm_beef      = fcn_vector_price_series(parameters.gm_beef,     parameters.num_years + 1);
-    parameters.gm_sheep     = fcn_vector_price_series(parameters.gm_sheep,    parameters.num_years + 1);
+    MP.gm_beef      = fcn_vector_price_series(MP.gm_beef,     MP.num_years + 1);
+    MP.gm_sheep     = fcn_vector_price_series(MP.gm_sheep,    MP.num_years + 1);
     
     % Fertiliser and quotas
-    parameters.price_fert   = fcn_vector_price_series(parameters.price_fert,  parameters.num_years + 1);
-    parameters.price_quota  = fcn_vector_price_series(parameters.price_quota, parameters.num_years + 1);
+    MP.price_fert   = fcn_vector_price_series(MP.price_fert,  MP.num_years + 1);
+    MP.price_quota  = fcn_vector_price_series(MP.price_quota, MP.num_years + 1);
     
     
-    %% (4) CALCULATE AGRICULTURE PRODUCTION AND GHG ES
+    % (4) CALCULATE AGRICULTURE PRODUCTION AND GHG ES
     %  ===============================================
     
     % (a) Preallocate arrays for output variables
@@ -162,53 +155,53 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
     es_agriculture.new2kid = landuses.new2kid;
     
     % Top level model: arable v grassland split
-    es_agriculture.arable_ha = zeros(ncells, parameters.num_years); % Top level output, hectares of ag land which is arable (vs grassland) in each cell
-    es_agriculture.grass_ha = zeros(ncells, parameters.num_years); % Top level output, hectares of ag land which is grassland (vs arable) in each cell
+    es_agriculture.arable_ha = zeros(ncells, MP.num_years); % Top level output, hectares of ag land which is arable (vs grassland) in each cell
+    es_agriculture.grass_ha  = zeros(ncells, MP.num_years); % Top level output, hectares of ag land which is grassland (vs arable) in each cell
 
     % Arable model: split of different crops
-    es_agriculture.wheat_ha = zeros(ncells, parameters.num_years); % Hectares in wheat for each cell by year 
-    es_agriculture.osr_ha = zeros(ncells, parameters.num_years); % Hectares in Oil Seed Rape for each cell
-    es_agriculture.wbar_ha = zeros(ncells, parameters.num_years); % Hectares in winter barley for each cell
-    es_agriculture.sbar_ha = zeros(ncells, parameters.num_years); % Hectares in spring barley for each cell
-    es_agriculture.bar_ha = zeros(ncells, parameters.num_years); % Hectares in barley for each cell (winter + spring barley)
-    es_agriculture.pot_ha = zeros(ncells, parameters.num_years); % Hectares in potatoes for each cell
-    es_agriculture.sb_ha = zeros(ncells, parameters.num_years); % Hectares in sugarbeet for each cell
-    es_agriculture.root_ha = zeros(ncells, parameters.num_years); % Hectares in root crops (potatoes + sugarbeet) for each cell
-    es_agriculture.other_ha = zeros(ncells, parameters.num_years); % Hectares in other crops for each cell
+    es_agriculture.wheat_ha = zeros(ncells, MP.num_years); % Hectares in wheat for each cell by year 
+    es_agriculture.osr_ha   = zeros(ncells, MP.num_years); % Hectares in Oil Seed Rape for each cell
+    es_agriculture.wbar_ha  = zeros(ncells, MP.num_years); % Hectares in winter barley for each cell
+    es_agriculture.sbar_ha  = zeros(ncells, MP.num_years); % Hectares in spring barley for each cell
+    es_agriculture.bar_ha   = zeros(ncells, MP.num_years); % Hectares in barley for each cell (winter + spring barley)
+    es_agriculture.pot_ha   = zeros(ncells, MP.num_years); % Hectares in potatoes for each cell
+    es_agriculture.sb_ha    = zeros(ncells, MP.num_years); % Hectares in sugarbeet for each cell
+    es_agriculture.root_ha  = zeros(ncells, MP.num_years); % Hectares in root crops (potatoes + sugarbeet) for each cell
+    es_agriculture.other_ha = zeros(ncells, MP.num_years); % Hectares in other crops for each cell
 
     % Grassland model: split of different grassland types
-    es_agriculture.pgrass_ha = zeros(ncells, parameters.num_years); % Hectares of permanent grassland
-    es_agriculture.tgrass_ha = zeros(ncells, parameters.num_years); % Hectares of teparametersorary grassland
-    es_agriculture.rgraz_ha = zeros(ncells, parameters.num_years); % Hectares of rough grazing
+    es_agriculture.pgrass_ha = zeros(ncells, MP.num_years); % Hectares of permanent grassland
+    es_agriculture.tgrass_ha = zeros(ncells, MP.num_years); % Hectares of teparametersorary grassland
+    es_agriculture.rgraz_ha  = zeros(ncells, MP.num_years); % Hectares of rough grazing
 
     % Livestock model: heads of different livestock types
-    es_agriculture.dairy = zeros(ncells, parameters.num_years); % Heads of dairy cows
-    es_agriculture.beef = zeros(ncells, parameters.num_years); % Heads of beef cows
-    es_agriculture.sheep = zeros(ncells, parameters.num_years); % Heads of sheep
-    es_agriculture.livestock = zeros(ncells, parameters.num_years); % Heads of livestock
+    es_agriculture.dairy     = zeros(ncells, MP.num_years); % Heads of dairy cows
+    es_agriculture.beef      = zeros(ncells, MP.num_years); % Heads of beef cows
+    es_agriculture.sheep     = zeros(ncells, MP.num_years); % Heads of sheep
+    es_agriculture.livestock = zeros(ncells, MP.num_years); % Heads of livestock
 
     % Food
-    es_agriculture.wheat_food = zeros(ncells, parameters.num_years); % Total tonnes of food produced in the cell 
-    es_agriculture.osr_food = zeros(ncells, parameters.num_years); % Total tonnes of food produced in the cell 
-    es_agriculture.wbar_food = zeros(ncells, parameters.num_years); % Total tonnes of food produced in the cell 
-    es_agriculture.sbar_food = zeros(ncells, parameters.num_years); % Total tonnes of food produced in the cell 
-    es_agriculture.pot_food = zeros(ncells, parameters.num_years); % Total tonnes of food produced in the cell 
-    es_agriculture.sb_food = zeros(ncells, parameters.num_years); % Total tonnes of food produced in the cell
-    es_agriculture.food = zeros(ncells, parameters.num_years); % Total tonnes of food (arable crops) produced in the cell 
+    es_agriculture.wheat_food = zeros(ncells, MP.num_years); % Total tonnes of food produced in the cell 
+    es_agriculture.osr_food   = zeros(ncells, MP.num_years); % Total tonnes of food produced in the cell 
+    es_agriculture.wbar_food  = zeros(ncells, MP.num_years); % Total tonnes of food produced in the cell 
+    es_agriculture.sbar_food  = zeros(ncells, MP.num_years); % Total tonnes of food produced in the cell 
+    es_agriculture.pot_food   = zeros(ncells, MP.num_years); % Total tonnes of food produced in the cell 
+    es_agriculture.sb_food    = zeros(ncells, MP.num_years); % Total tonnes of food produced in the cell
+    es_agriculture.food       = zeros(ncells, MP.num_years); % Total tonnes of food (arable crops) produced in the cell 
 
     % Farm profits
-    es_agriculture.arable_profit = zeros(ncells, parameters.num_years); % Profit from crops produced in the cell
-    es_agriculture.livestock_profit = zeros(ncells, parameters.num_years); % Profit from livestock produced in the cell
-    es_agriculture.farm_profit = zeros(ncells, parameters.num_years); % Farm profit (crop profit + livestock profit);
+    es_agriculture.arable_profit    = zeros(ncells, MP.num_years); % Profit from crops produced in the cell
+    es_agriculture.livestock_profit = zeros(ncells, MP.num_years); % Profit from livestock produced in the cell
+    es_agriculture.farm_profit      = zeros(ncells, MP.num_years); % Farm profit (crop profit + livestock profit);
 
     
     % b. Calculate agricultural production
     % ------------------------------------
     % Loop over time period and run top level, arable, grassland and
     % livestock models
-    for y = 1:parameters.num_years
+    for y = 1:MP.num_years
         % Define current year within loop
-        current_year = parameters.start_year + y - 1;
+        current_year = MP.start_year + y - 1;
         
         % Extract rain and temperature for current year and save in
         % climate_current_year structure
@@ -223,22 +216,22 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
         AgricultureProductionLastYear = AgricultureProduction;
         
         % Arable
-        AgricultureProductionLastYear.Data_cells.price_wheat = AgricultureProduction.Data_cells.price_wheat + parameters.price_wheat(y);
-        AgricultureProductionLastYear.Data_cells.price_osr   = AgricultureProduction.Data_cells.price_osr + parameters.price_osr(y);
-        AgricultureProductionLastYear.Data_cells.price_wbar  = AgricultureProduction.Data_cells.price_wbar + parameters.price_wbar(y);
-        AgricultureProductionLastYear.Data_cells.price_sbar  = AgricultureProduction.Data_cells.price_sbar + parameters.price_sbar(y);
-        AgricultureProductionLastYear.Data_cells.price_pot   = AgricultureProduction.Data_cells.price_pot + parameters.price_pot(y);
-        AgricultureProductionLastYear.Data_cells.price_sb    = AgricultureProduction.Data_cells.price_sb + parameters.price_sb(y);
-        AgricultureProductionLastYear.Data_cells.price_pnb   = AgricultureProduction.Data_cells.price_pnb + parameters.price_other(y);
+        AgricultureProductionLastYear.Data_cells.price_wheat = AgricultureProduction.Data_cells.price_wheat + MP.price_wheat(y);
+        AgricultureProductionLastYear.Data_cells.price_osr   = AgricultureProduction.Data_cells.price_osr + MP.price_osr(y);
+        AgricultureProductionLastYear.Data_cells.price_wbar  = AgricultureProduction.Data_cells.price_wbar + MP.price_wbar(y);
+        AgricultureProductionLastYear.Data_cells.price_sbar  = AgricultureProduction.Data_cells.price_sbar + MP.price_sbar(y);
+        AgricultureProductionLastYear.Data_cells.price_pot   = AgricultureProduction.Data_cells.price_pot + MP.price_pot(y);
+        AgricultureProductionLastYear.Data_cells.price_sb    = AgricultureProduction.Data_cells.price_sb + MP.price_sb(y);
+        AgricultureProductionLastYear.Data_cells.price_pnb   = AgricultureProduction.Data_cells.price_pnb + MP.price_other(y);
         
         % Livestock
-        AgricultureProductionLastYear.Data_cells.price_milk  = AgricultureProduction.Data_cells.price_milk + parameters.price_dairy(y);
-        AgricultureProductionLastYear.Data_cells.price_beef  = AgricultureProduction.Data_cells.price_beef + parameters.price_beef(y);
-        AgricultureProductionLastYear.Data_cells.price_sheep = AgricultureProduction.Data_cells.price_sheep + parameters.price_sheep(y);
+        AgricultureProductionLastYear.Data_cells.price_milk  = AgricultureProduction.Data_cells.price_milk + MP.price_dairy(y);
+        AgricultureProductionLastYear.Data_cells.price_beef  = AgricultureProduction.Data_cells.price_beef + MP.price_beef(y);
+        AgricultureProductionLastYear.Data_cells.price_sheep = AgricultureProduction.Data_cells.price_sheep + MP.price_sheep(y);
         
         % Other
-        AgricultureProductionLastYear.Data_cells.price_fert  = AgricultureProduction.Data_cells.price_fert + parameters.price_fert(y);
-        AgricultureProductionLastYear.Data_cells.price_quota = AgricultureProduction.Data_cells.price_quota + parameters.price_quota(y);
+        AgricultureProductionLastYear.Data_cells.price_fert  = AgricultureProduction.Data_cells.price_fert + MP.price_fert(y);
+        AgricultureProductionLastYear.Data_cells.price_quota = AgricultureProduction.Data_cells.price_quota + MP.price_quota(y);
         
         % (ii) Define normalised price variables for the year based on last year's prices
         % -------------------------------------------------------------
@@ -262,22 +255,22 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
         AgricultureProductionCurrentYear = AgricultureProduction;
         
         % Arable
-        AgricultureProductionCurrentYear.Data_cells.price_wheat = AgricultureProduction.Data_cells.price_wheat + parameters.price_wheat(y+1);
-        AgricultureProductionCurrentYear.Data_cells.price_osr   = AgricultureProduction.Data_cells.price_osr + parameters.price_osr(y+1);
-        AgricultureProductionCurrentYear.Data_cells.price_wbar  = AgricultureProduction.Data_cells.price_wbar + parameters.price_wbar(y+1);
-        AgricultureProductionCurrentYear.Data_cells.price_sbar  = AgricultureProduction.Data_cells.price_sbar + parameters.price_sbar(y+1);
-        AgricultureProductionCurrentYear.Data_cells.price_pot   = AgricultureProduction.Data_cells.price_pot + parameters.price_pot(y+1);
-        AgricultureProductionCurrentYear.Data_cells.price_sb    = AgricultureProduction.Data_cells.price_sb + parameters.price_sb(y+1);
-        AgricultureProductionCurrentYear.Data_cells.price_pnb   = AgricultureProduction.Data_cells.price_pnb + parameters.price_other(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_wheat = AgricultureProduction.Data_cells.price_wheat + MP.price_wheat(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_osr   = AgricultureProduction.Data_cells.price_osr + MP.price_osr(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_wbar  = AgricultureProduction.Data_cells.price_wbar + MP.price_wbar(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_sbar  = AgricultureProduction.Data_cells.price_sbar + MP.price_sbar(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_pot   = AgricultureProduction.Data_cells.price_pot + MP.price_pot(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_sb    = AgricultureProduction.Data_cells.price_sb + MP.price_sb(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_pnb   = AgricultureProduction.Data_cells.price_pnb + MP.price_other(y+1);
         
         % Livestock
-        AgricultureProductionCurrentYear.Data_cells.price_milk  = AgricultureProduction.Data_cells.price_milk + parameters.price_dairy(y+1);
-        AgricultureProductionCurrentYear.Data_cells.price_beef  = AgricultureProduction.Data_cells.price_beef + parameters.price_beef(y+1);
-        AgricultureProductionCurrentYear.Data_cells.price_sheep = AgricultureProduction.Data_cells.price_sheep + parameters.price_sheep(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_milk  = AgricultureProduction.Data_cells.price_milk + MP.price_dairy(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_beef  = AgricultureProduction.Data_cells.price_beef + MP.price_beef(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_sheep = AgricultureProduction.Data_cells.price_sheep + MP.price_sheep(y+1);
         
         % Other
-        AgricultureProductionCurrentYear.Data_cells.price_fert  = AgricultureProduction.Data_cells.price_fert + parameters.price_fert(y+1);
-        AgricultureProductionCurrentYear.Data_cells.price_quota = AgricultureProduction.Data_cells.price_quota + parameters.price_quota(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_fert  = AgricultureProduction.Data_cells.price_fert + MP.price_fert(y+1);
+        AgricultureProductionCurrentYear.Data_cells.price_quota = AgricultureProduction.Data_cells.price_quota + MP.price_quota(y+1);
 
         % i. Instead of running the top level model, use the top-level split
         %    resulting from the ELMS selected
@@ -299,7 +292,7 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
         
         % ii. Run arable model - crop hectares, food, profit
         % --------------------------------------------------
-        arable_info = fcn_calc_arable(es_agriculture.arable_ha(:, y), AgricultureProductionLastYear.Data_cells, climate_last_year, AgricultureProductionCurrentYear.Data_cells, AgricultureProduction.Coefficients.Arable, parameters.irrigation);
+        arable_info = fcn_calc_arable(es_agriculture.arable_ha(:, y), AgricultureProductionLastYear.Data_cells, climate_last_year, AgricultureProductionCurrentYear.Data_cells, AgricultureProduction.Coefficients.Arable, MP.irrigation);
         es_agriculture.wheat_ha(:, y)      = arable_info.wheat_ha;
         es_agriculture.osr_ha(:, y)        = arable_info.osr_ha;
         es_agriculture.wbar_ha(:, y)       = arable_info.wbar_ha;
@@ -317,11 +310,11 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
         es_agriculture.sb_food(:, y)       = arable_info.sb_food;
         es_agriculture.food(:, y)          = arable_info.food;
         es_agriculture.wheat_profit(:, y)  = arable_info.wheat_profit;
-        es_agriculture.osr_profit(:, y)  = arable_info.osr_profit;
-        es_agriculture.wbar_profit(:, y)  = arable_info.wbar_profit;
-        es_agriculture.sbar_profit(:, y)  = arable_info.sbar_profit;
-        es_agriculture.pot_profit(:, y)  = arable_info.pot_profit;
-        es_agriculture.sb_profit(:, y)  = arable_info.sb_profit;
+        es_agriculture.osr_profit(:, y)    = arable_info.osr_profit;
+        es_agriculture.wbar_profit(:, y)   = arable_info.wbar_profit;
+        es_agriculture.sbar_profit(:, y)   = arable_info.sbar_profit;
+        es_agriculture.pot_profit(:, y)    = arable_info.pot_profit;
+        es_agriculture.sb_profit(:, y)     = arable_info.sb_profit;
         es_agriculture.other_profit(:, y)  = arable_info.other_profit;        
         es_agriculture.arable_profit(:, y) = arable_info.arable_profit;
         
@@ -336,8 +329,8 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
         % ----------------------------------------------------
         
         % Calculate gross margins of current year for beef and sheep
-        MP.gm_beef  = parameters.gm_beef(y+1);
-        MP.gm_sheep = parameters.gm_sheep(y+1);
+        MP.gm_beef  = MP.gm_beef(y+1);
+        MP.gm_sheep = MP.gm_sheep(y+1);
         
         livestock_info = fcn_calc_livestock(es_agriculture.grass_ha(:, y), AgricultureProductionLastYear.Data_cells, climate_last_year, AgricultureProduction.Coefficients.Livestock, MP);
         es_agriculture.dairy(:, y) = livestock_info.dairy;
@@ -380,28 +373,28 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
     % Multiply hectares of crops/grassland & heads of livestock by
     % pre-calculated per hectare & per head emissions from Cool Farm Tool
     % Divide by 1000 to get quantities in tons
-    if parameters.run_ghg
+    if MP.run_ghg
         % i. Emissions quantities
         % -----------------------
         % Note: we multiply by -1 here to view emissions as negative
         % sequestration
         
         % Multiply hectares of crop types by per hectare emissions 
-        es_agriculture.ghg_wheat = - (es_agriculture.wheat_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.cer, [1, parameters.num_years]) ./ 1000);
-        es_agriculture.ghg_osr = - (es_agriculture.osr_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.osrape, [1, parameters.num_years]) ./ 1000);
-        es_agriculture.ghg_wbar = - (es_agriculture.wbar_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.cer, [1, parameters.num_years]) ./ 1000);
-        es_agriculture.ghg_sbar = - (es_agriculture.sbar_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.cer, [1, parameters.num_years]) ./ 1000);
-        es_agriculture.ghg_pot = - (es_agriculture.pot_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.root, [1, parameters.num_years]) ./ 1000);
-        es_agriculture.ghg_sb = - (es_agriculture.sb_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.root, [1, parameters.num_years]) ./ 1000);
-        es_agriculture.ghg_other = - (es_agriculture.other_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.other, [1, parameters.num_years]) ./ 1000);
+        es_agriculture.ghg_wheat = - (es_agriculture.wheat_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.cer, [1, MP.num_years]) ./ 1000);
+        es_agriculture.ghg_osr = - (es_agriculture.osr_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.osrape, [1, MP.num_years]) ./ 1000);
+        es_agriculture.ghg_wbar = - (es_agriculture.wbar_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.cer, [1, MP.num_years]) ./ 1000);
+        es_agriculture.ghg_sbar = - (es_agriculture.sbar_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.cer, [1, MP.num_years]) ./ 1000);
+        es_agriculture.ghg_pot = - (es_agriculture.pot_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.root, [1, MP.num_years]) ./ 1000);
+        es_agriculture.ghg_sb = - (es_agriculture.sb_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.root, [1, MP.num_years]) ./ 1000);
+        es_agriculture.ghg_other = - (es_agriculture.other_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.other, [1, MP.num_years]) ./ 1000);
         
         % Total emissions from arable
         es_agriculture.ghg_arable = es_agriculture.ghg_wheat + es_agriculture.ghg_osr + es_agriculture.ghg_wbar + es_agriculture.ghg_sbar + es_agriculture.ghg_pot + es_agriculture.ghg_sb + es_agriculture.ghg_other;
                 
         % Multiply hectares of grassland types by per hectare emissions
-        es_agriculture.ghg_pgrass = - (es_agriculture.pgrass_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.pgrass, [1, parameters.num_years]) ./ 1000);
-        es_agriculture.ghg_tgrass = - (es_agriculture.tgrass_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.tgrass, [1, parameters.num_years]) ./ 1000);
-        es_agriculture.ghg_rgraz = - (es_agriculture.rgraz_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.rgraz, [1, parameters.num_years]) ./ 1000);
+        es_agriculture.ghg_pgrass = - (es_agriculture.pgrass_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.pgrass, [1, MP.num_years]) ./ 1000);
+        es_agriculture.ghg_tgrass = - (es_agriculture.tgrass_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.tgrass, [1, MP.num_years]) ./ 1000);
+        es_agriculture.ghg_rgraz = - (es_agriculture.rgraz_ha .* repmat(AgricultureGHG.EmissionsGridPerHa.rgraz, [1, MP.num_years]) ./ 1000);
         
         % Total emissions from grassland
         es_agriculture.ghg_grass = es_agriculture.ghg_pgrass + es_agriculture.ghg_tgrass + es_agriculture.ghg_rgraz;
@@ -423,7 +416,7 @@ function es_agriculture = fcn_run_agriculture_elms(agriculture_data_folder, ...
         % multiplying by carbon price.
 
         % Set up discounted carbon prices
-        carbon_disc_price = carbon_price(1:parameters.num_years) .* delta_data_yrs;
+        carbon_disc_price = MP.carbon_price(1:MP.num_years) .* delta_data_yrs;
 
         % Total agricultural emissions annuity
         es_agriculture.ghg_farm_ann = (es_agriculture.ghg_farm * carbon_disc_price) * gamma_data_yrs;

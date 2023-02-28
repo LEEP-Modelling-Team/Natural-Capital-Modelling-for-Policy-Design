@@ -1,7 +1,7 @@
 function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, wood_data, sng_data, visval_type, min_site_size)
 
-    %% 1. Data Preparation
-    %  -------------------
+    % 1. Data Preparation
+    % -------------------
     % 1.a Load saved data files
     % -------------------------
     NEVO_ORVal_newsite_data_mat = strcat(rec_data_folder, 'NEVO_ORVal_newsite_xmnl_data.mat');
@@ -25,8 +25,9 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
     patharea = 1.5 * (pathlen/25) * 0.0625;
     sng_data = [sng_data(:,1) patharea];
 
-    %% 2. v1 base for each new site
-    %  ----------------------------
+    
+    % 2. v1 base for each new site
+    % ----------------------------
     % Find index of input cells in full list of cells
     [~, wood_cell_idx] = ismember(wood_data(:,1), NEVO_cell_v1dg.new2kid);
     [~, sng_cell_idx]  = ismember(sng_data(:,1),  NEVO_cell_v1dg.new2kid);
@@ -35,8 +36,8 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
     sng_v1  = NEVO_cell_v1dg.v1dg_path(sng_cell_idx)  + log(sng_data(:,2))  * bPLCNGRAS + bPCNGRASS; 
 
 
-    %% 3. v1 with tc for each new site to each max lsoa
-    %  ------------------------------------------------
+    % 3. v1 with tc for each new site to each max lsoa
+    % ------------------------------------------------
     % v1 + tc for each of max lsoa
     wood_v1wlk = wood_v1 + v1tcwlk(wood_cell_idx,:);
     wood_v1car = wood_v1 + v1tccar(wood_cell_idx,:);
@@ -45,11 +46,12 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
 
     sng_v1wlk = sng_v1 + v1tcwlk(sng_cell_idx,:);
     sng_v1car = sng_v1 + v1tccar(sng_cell_idx,:);
-    sng_v1wlk  = reshape(sng_v1wlk',[nsng*nlsoasave, 1]); 
-    sng_v1car  = reshape(sng_v1car',[nsng*nlsoasave, 1]); 
+    sng_v1wlk = reshape(sng_v1wlk',[nsng*nlsoasave, 1]); 
+    sng_v1car = reshape(sng_v1car',[nsng*nlsoasave, 1]); 
 
-    %% 4. Valuation
-    %  ------------
+    
+    % 4. Valuation
+    % ------------
     % 4.a alpha*exp(v1*lambda): for each of m nests
     % ---------------------------------------------
     wood_aexpv1wlk = wood_alphas' .* exp(wood_v1wlk.*lambdas');
@@ -200,8 +202,8 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
     end
 
 
-    %% 5. Return Data
-    %  --------------
+    % 5. Return Data
+    % --------------
 
     % a. Aggregate Visits & Values
     % ----------------------------
@@ -220,7 +222,7 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
     vis_wood = sum(vis(1:nwood,:),2);
     vis_sng  = sum(vis(nwood+1:nwood+nsng,:),2);
     
-    rec_wood = [val_wood, val_wood, val_wood, val_wood, vis_wood, vis_wood, vis_wood, vis_wood];
-    rec_sng  = [val_sng,   val_sng,  val_sng,  val_sng,  vis_sng,  vis_sng,  vis_sng, vis_sng];
+    rec_wood = [val_wood, vis_wood];
+    rec_sng  = [val_sng,  vis_sng];
 
 end

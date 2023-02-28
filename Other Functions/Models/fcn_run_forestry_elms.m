@@ -13,8 +13,8 @@ function es_forestry = fcn_run_forestry_elms(forest_data_folder, ...
 
     % a. Process inputs
     % -----------------
-    wood_new_ha   = landuse_ha_change(:,1);
-    agric_new_ha  = landuse_ha_change(:,2);
+    wood_new_ha    = landuse_ha_change(:,1);
+    agric_new_ha   = landuse_ha_change(:,2);
     sngrass_new_ha = landuse_ha_change(:,3);
     
     % b. Constants
@@ -60,7 +60,7 @@ function es_forestry = fcn_run_forestry_elms(forest_data_folder, ...
                 case {'arable_reversion_wood_access', ...
                       'arable_reversion_wood_noaccess'}
                   % New woodland is on arable land
-                  arable2wood_ha_cell = wood_new_ha;
+                  arable2wood_ha_cell  = wood_new_ha;
                   narable2wood_ha_cell = zeros(size(wood_new_ha));
                 case {'destocking_wood_access', ...
                       'destocking_wood_noaccess'}
@@ -253,11 +253,11 @@ function es_forestry = fcn_run_forestry_elms(forest_data_folder, ...
 
         % npv: per ha npv of timber production by yc at new prices & discount rate
 
-        npv_ben_perha       = delta_rot1' * (ForestTimber.TimberValue.(species));         % one rotation
-        npv_cst_perha       = delta_rot1' * (ForestTimber.TimberCosts.PerHa.(species));         % one rotation
+        npv_ben_perha = delta_rot1' * (ForestTimber.TimberValue.(species));         % one rotation
+        npv_cst_perha = delta_rot1' * (ForestTimber.TimberCosts.PerHa.(species));         % one rotation
         
         % annuity: per ha annuity of timber production by yc at new prices & discount rate
-        ann_ben_perha  = npv_ben_perha' .* gamma_rot1;       % one rotation
+        ann_ben_perha = npv_ben_perha' .* gamma_rot1;       % one rotation
         ann_cst_perha = npv_cst_perha' .* gamma_rot1;       % one rotation
 
         % Not needed for ELMS

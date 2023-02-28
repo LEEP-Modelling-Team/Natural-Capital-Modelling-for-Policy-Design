@@ -1,12 +1,20 @@
-%% script1_run_baseline
+%  script1_run_baseline
 %  ====================
 % Run models at baseline values, save as baseline_results.mat
 % Models that automatically return changes from the baseline are not
 % required to run here.
 clear
 
-%% (0) Set up parameters
-%  =====================
+% (1) Set up
+%  ==========
+
+% Connect to database
+% -------------------
+server_flag = false;
+conn = fcn_connect_database(server_flag);
+
+% Set model parameters
+% --------------------
 json = ['{"id": "E92000001",'...
         '"feature_type": "integrated_countries",' ...
         '"run_agriculture": true,' ...
@@ -19,97 +27,150 @@ json = ['{"id": "E92000001",'...
         '"run_pollination": true,' ...
         '"run_non_use_pollination": true,' ...
         '"run_non_use_habitat": true,' ...
-        '"price_broad": 0,' ...
-        '"price_conif": 0,' ...
         '"water": null}'];
-
-parameters = fcn_set_parameters();
-
-%% (1) Set up
-%  ==========
-% Set flag for server
-% -------------------
-% true - NEVO
-% false - local machine (for testing)
-server_flag = false;
-
-% Connect to database
-% -------------------
-conn = fcn_connect_database(server_flag);
-
-% Set model parameters
-% --------------------
-% Decode JSON object/string
-% Set other default parameters
-MP = fcn_set_model_parameters(json, server_flag, parameters);
+% Decode JSON object/string & set other default parameters
+MP = fcn_set_model_parameters(conn, json, server_flag);
 
 % Connect to NEV Model
 % --------------------
-NEV.path_code       = 'D:/myGitHub/NEV/';
-NEV.path_data_in    = 'D:/myGitHub/NEV/Model Data/';
-NEV.path_data_water = 'D:/myGitHub/water-runs/MAT Files/';
-addpath(genpath(NEV.path_code))
-
-% Get carbon prices
-% -----------------
-if strcmp(MP.carbon_price,'scc')
-    % Read in SCC from:
-    %   Technical Support Document: Social Cost of Carbon, Methane, and Nitrous Oxide
-    %   Interim Estimates under Executive Order 13990
-    %   Interagency Working Group on Social Cost of Greenhouse Gases, United States Government 
-    %   Feb 2021
-    %     Data is from 2020 to 2050 and in $US 2020 per tonne CO2 we use 
-    %     the average estimate at 3% discount rate
-    scc_data_file = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\scc\tsd_2021_annual_unrounded.csv';
-    scc_table     = readtable(scc_data_file);
-    carbon_price  = scc_table.x3_0__CO2;
-    % Extend to 300 years.
-    %  (i)  persist price growth until 2100
-    %  (ii) maintain same scc from 2100 to 2320 as per UK time series
-    incr   = carbon_price(end)-carbon_price(end-1);
-    carbon_price = [carbon_price; (carbon_price(end):incr:(carbon_price(end)+incr*(50-1)))'];
-    carbon_price = [carbon_price; repelem(carbon_price(end), 220)'];
-    % convert from dollars to pounds at 2020 exchange rate
-    carbon_price = carbon_price/1.2837;    
-else
-    carbon_price = fcn_get_carbon_price(conn, MP.carbon_price);
-end
+addpath(genpath(MP.NEV_code_folder))
 
 % Go from regional scale to 2km grid cells
 % -----------------------------------------
 % Returns cell ids and other info
 cell_info = fcn_region_to_cell(conn, MP.feature_type, MP.id);
 
-% Import primary variables from database
-% --------------------------------------
-% Set this to PV_original
-% We create copies from this to overwrite
-PV = fcn_import_primary_variables(conn, cell_info);
+% Import baseline landcovers from database
+% ----------------------------------------
+% Set this to baseline_lcs_original
+baseline_lcs = fcn_import_primary_variables(conn, cell_info);
 
-% Set up landuse_ha_change for forestry model
-% -------------------------------------------
-% (All zeros - no change from baseline)
-landuse_ha_change = zeros(cell_info.ncells, 5);
 
-%% (3) Run agriculture, forestry and GHG models
+% (2) Run agriculture, forestry and GHG models
 %  ============================================
 % (a) Agriculture (+ GHG)
 % -----------------------
 if MP.run_agriculture
-    landuses.new2kid = PV.new2kid;
-    landuses.farm_ha = PV.farm_ha;
     es_agriculture = fcn_run_agriculture(MP.agriculture_data_folder, ...
                                          MP.climate_data_folder, ...
                                          MP.agricultureghg_data_folder, ...
                                          MP, ...
-                                         landuses, ...
-                                         carbon_price(1:40));
+                                         baseline_lcs, ...
+                                         MP.carbon_price(1:40));
+    
+	% Rescale for Constant Land Areas over Time
+    % -----------------------------------------
+    % The extent of different agricultural landcovers in each cell are 
+    % scaled to ensure consistency with maintaining the average arable &
+    % grass extent in each cell from the first decade.    
+    
+    % ADVENT definitions of Arable & Grass (transfer tgrass)
+    % ------------------------------------------------------
+    % es_agriculture.arable_ha = es_agriculture.arable_ha + es_agriculture.tgrass_ha;
+    % es_agriculture.grass_ha  = es_agriculture.grass_ha  - es_agriculture.tgrass_ha;                                     
+           
+    % Average Arable & Grass Extent Over First Decade
+    % -----------------------------------------------
+    arable_ha_tser = es_agriculture.arable_ha;
+    grass_ha_tser  = es_agriculture.grass_ha;    
+    arable_ha = mean(arable_ha_tser(:,1:10),2);
+    grass_ha  = mean(grass_ha_tser(:,1:10),2);
+
+    % Adjustment factors to rescale arable & grass to first decade constant
+    % ---------------------------------------------------------------------
+    rescale_arable_ha = arable_ha./arable_ha_tser;
+    rescale_grass_ha  = grass_ha./grass_ha_tser;
+    rescale_arable_ha(isnan(rescale_arable_ha)) = 1;
+    rescale_grass_ha(isnan(rescale_grass_ha))   = 1;
+    
+    % Variable names
+    % --------------
+    vars_arable     = {'arable', 'wheat', 'osr', 'wbar', 'sbar', 'pot', 'sb', 'other'};
+    vars_grass_ha   = {'grass', 'tgrass', 'pgrass', 'rgraz'};
+    vars_grass_food = {'livestock', 'dairy', 'beef', 'sheep'};
+    
+    % Rescale: Landcover ha
+    % ---------------------
+    vars_all = horzcat(vars_arable, vars_grass_ha);
+    for i = 1:length(vars_all) 
+        % Rescaling factors for landcover areas
+        if find(strcmp(vars_arable, vars_all{i}))
+            rescale_ha = rescale_arable_ha;
+        else
+            rescale_ha = rescale_grass_ha;
+        end          
+        % Rescale the landarea for this landcover
+        eval(['baseline_lcs.', vars_all{i}, '_ha = es_agriculture.', vars_all{i}, '_ha.*rescale_ha;']);        
+        eval(['es_agriculture_rescale.', vars_all{i}, '_ha = baseline_lcs.', vars_all{i}, '_ha;']);                
+        % Rescale landcovers for NEV Periods
+        for t = 1:4
+            tstart = (t-1)*10+1;
+            tend   = t*10;
+            tstr   = num2str(20+(t-1)*10);
+            % Hectares of each landcover in each period
+            eval(['baseline_lcs.', vars_all{i}, '_ha_', tstr, ' = mean(baseline_lcs.', vars_all{i}, '_ha(:,tstart:tend), 2);']);
+        end
+    end
+    es_agriculture_rescale.farm_ha = es_agriculture_rescale.arable_ha + es_agriculture_rescale.grass_ha;
+    
+    % Rescale: Profit
+    % ---------------
+    vars_all = horzcat(vars_arable, vars_grass_food);
+    for i = 1:length(vars_all) 
+        if find(strcmp(vars_arable, vars_all{i}))
+            rescale_ha = rescale_arable_ha;
+        else
+            rescale_ha = rescale_grass_ha;
+        end          
+        eval(['es_agriculture_rescale.', vars_all{i}, '_profit = es_agriculture.', vars_all{i}, '_profit.*rescale_ha;']);        
+    end   
+    es_agriculture_rescale.farm_profit = es_agriculture_rescale.arable_profit + es_agriculture_rescale.livestock_profit;
+    
+    % Rescale: Profit_ann
+    % -------------------
+    vars_all = horzcat(vars_arable, vars_grass_food);
+    for i = 1:length(vars_all) 
+        if find(strcmp(vars_arable, vars_all{i}))
+            rescale_ha = rescale_arable_ha;
+        else
+            rescale_ha = rescale_grass_ha;
+        end          
+        eval(['es_agriculture_rescale.', vars_all{i}, '_profit_ann = es_agriculture.', vars_all{i}, '_profit_ann.*rescale_ha;']);        
+    end
+    es_agriculture_rescale.farm_profit_ann = es_agriculture_rescale.arable_profit_ann + es_agriculture_rescale.livestock_profit_ann;    
+    
+    % Rescale: ghg
+    % ------------
+    vars_all = horzcat(vars_arable, vars_grass_ha, vars_grass_food);
+    for i = 1:length(vars_all) 
+        if find(strcmp(vars_arable, vars_all{i}))
+            rescale_ha = rescale_arable_ha;
+        else
+            rescale_ha = rescale_grass_ha;
+        end          
+        eval(['es_agriculture_rescale.ghg_', vars_all{i}, ' = es_agriculture.ghg_', vars_all{i}, '.*rescale_ha;']);        
+    end 
+    es_agriculture_rescale.ghg_farm = es_agriculture_rescale.ghg_arable + es_agriculture_rescale.ghg_grass + es_agriculture_rescale.ghg_livestock;  
+    
+    % Rescale: ghg_ann
+    % ----------------
+    vars_all = horzcat(vars_arable, vars_grass_ha, vars_grass_food);
+    for i = 1:length(vars_all) 
+        if find(strcmp(vars_arable, vars_all{i}))
+            rescale_ha = rescale_arable_ha;
+        else
+            rescale_ha = rescale_grass_ha;
+        end          
+        eval(['es_agriculture_rescale.ghg_', vars_all{i}, '_ann = es_agriculture.ghg_', vars_all{i}, '_ann.*rescale_ha;']);        
+    end 
+    es_agriculture_rescale.ghg_farm_ann = es_agriculture_rescale.ghg_arable_ann + es_agriculture_rescale.ghg_grass_ann + es_agriculture_rescale.ghg_livestock_ann;
+                                     
 end
 
 % (b) Forestry (+ GHG)
 % --------------------
 if MP.run_forestry
-    landuses_chg.new2kid         = PV.new2kid;
+    landuses_chg.new2kid         = baseline_lcs.new2kid;
     landuses_chg.wood_ha_chg     = zeros(cell_info.ncells, 1);
     landuses_chg.sngrass_ha_chg  = zeros(cell_info.ncells, 1);
     landuses_chg.arable_ha_chg   = zeros(cell_info.ncells, 1);
@@ -120,59 +181,30 @@ if MP.run_forestry
                                    MP.forestghg_data_folder, ...
                                    MP, ...
                                    landuses_chg, ...
-                                   carbon_price);
+                                   MP.carbon_price);
 end
-
-% Collect output from agriculture, forestry and GHG models
-% --------------------------------------------------------
-% Create decadal output in 2020-2029, 2030-2039, 2040-2049, 2050-2059
-out = fcn_collect_output(MP, ...
-                         PV, ...
-                         es_agriculture, ...
-                         es_forestry, ...
-                         carbon_price);
-
-%% (4) Run additional models based on averaged decadal output
+                     
+%  (3) Run additional models based on averaged decadal output
 %  ==========================================================
 % (a) Recreation
 % --------------
 if MP.run_recreation
-    % Set up recreation parameters
-    % ----------------------------
-    % As this is a baseline run it shouldn't matter
-    % Should just load baseline table from .mat file, rather than run full model
-	site_type = 'path_new';
-	visval_type = 'simultaneous';
-	path_agg_method = 'agg_to_changed_cells';
-    minsitesize = 10;
-    es_recreation = fcn_run_recreation(MP.rec_data_folder, ...
-                                       MP, ...
-                                       out, ...
-                                       site_type, ...
-                                       visval_type, ...
-                                       path_agg_method, ...
-                                       minsitesize, ...
-                                       conn);
-    % Join recreation output to main out structure
-    out = table2struct(join(struct2table(out), es_recreation), 'ToScalar', true);
+
+    % No baseline recreation run is required as the calculation of benefits
+    % is done through the valuation of additions of new parks & paths to
+    % the orval sites.
+    
 end
 
 % (b) Biodiversity
 % ----------------
 % JNCC
 if MP.run_biodiversity_jncc
-    es_biodiversity_jncc = fcn_run_biodiversity_jncc(MP.biodiversity_data_folder_jncc, ...
-                                                     out, ...
-                                                     'future', ...
-                                                     'baseline');
+    es_biodiversity_jncc = fcn_run_biodiversity_jncc(MP.biodiversity_data_folder_jncc, baseline_lcs, 'future', 'baseline');
 end
-
 % UCL
 if MP.run_biodiversity_ucl
-    es_biodiversity_ucl = fcn_run_biodiversity_ucl(MP.biodiversity_data_folder, ...
-                                                   out, ...
-                                                   'rcp60', ...
-                                                   'baseline');
+    es_biodiversity_ucl = fcn_run_biodiversity_ucl(MP.biodiversity_data_folder, baseline_lcs, 'rcp60', 'baseline');
 end
 
 % (c) Water quality & water quality non-use
@@ -183,60 +215,39 @@ end
 % ------------
 % Done separately in run_water_results.m
 
-%% (5) Construct baseline structure for saving results
-%  ===================================================
+
+% (5) Construct baseline structure for saving results
+%  ==================================================
+baseline.baseline_lcs = baseline_lcs;
+
 % (a) Agriculture
 % ---------------
-baseline.es_agriculture = es_agriculture;
+baseline.es_agriculture = es_agriculture_rescale;
 
 % (b) Forestry
 % ------------
-% Use timber profits for 60:40% mixed woodland for now
-baseline.timber_mixed_ann         = es_forestry.Timber.ValAnn.Mix6040;
-baseline.timber_mixed_benefit_ann = es_forestry.Timber.BenefitAnn.Mix6040;
-baseline.timber_mixed_cost_ann    = es_forestry.Timber.CostAnn.Mix6040;
-baseline.timber_mixed_fixed_cost  = es_forestry.Timber.FixedCost.Mix6040;
+baseline.es_forestry = es_forestry;
 
 % (c) Greenhouse Gases
 % --------------------
-baseline.ghg_farm = es_agriculture.ghg_farm;
-
-% Use timber carbon for 60:40% mixed woodland for now
-baseline.ghg_mixed_yr   = es_forestry.TimberC.QntYr.Mix6040;
-baseline.ghg_mixed_yrUB = es_forestry.TimberC.QntYrUB.Mix6040;
-
-baseline.ghg_mixed_ann = es_forestry.TimberC.ValAnn.Mix6040;
-
-% No forestry soil carbon baseline, all zeros
+% In es_agriculture & es_forestry
 
 % (d) Recreation
 % --------------
-baseline.rec_vis = [repmat(out.rec_vis_20, 1, 10), ...
-                    repmat(out.rec_vis_30, 1, 10), ...
-                    repmat(out.rec_vis_40, 1, 10), ...
-                    repmat(out.rec_vis_50, 1, 10)];
-
-baseline.rec_val = [repmat(out.rec_val_20, 1, 10), ...
-                    repmat(out.rec_val_30, 1, 10), ...
-                    repmat(out.rec_val_40, 1, 10), ...
-                    repmat(out.rec_val_50, 1, 10)];
+% Not needed in baseline as valuation done using orval procedures which
+% value additions to existing recreation sites
 
 % (e) Biodiversity
 % ----------------
 % JNCC
-baseline.sr_100_20 = es_biodiversity_jncc.sr_100_20;
-baseline.sr_100_30 = es_biodiversity_jncc.sr_100_30;
-baseline.sr_100_40 = es_biodiversity_jncc.sr_100_40;
-baseline.sr_100_50 = es_biodiversity_jncc.sr_100_50;
+baseline.es_biodiversity_jncc = es_biodiversity_jncc;
 
 % UCL
-baseline.pollinator_sr_20 = es_biodiversity_ucl.pollinator_sr_20;
-baseline.pollinator_sr_30 = es_biodiversity_ucl.pollinator_sr_30;
-baseline.pollinator_sr_40 = es_biodiversity_ucl.pollinator_sr_40;
-baseline.pollinator_sr_50 = es_biodiversity_ucl.pollinator_sr_50;
+baseline.es_biodiversity_ucl = es_biodiversity_ucl;
 
-%% (6) Save baseline results to .mat file
-%  ======================================
+
+% (4) Save baseline results to .mat file
+% ======================================
 % Depends on what carbon price has been used
-save([MP.data_out 'baseline_results_', MP.carbon_price, '.mat'], 'baseline');
+save([MP.data_out 'baseline_results_', MP.carbon_price_str, '.mat'], 'baseline');
 

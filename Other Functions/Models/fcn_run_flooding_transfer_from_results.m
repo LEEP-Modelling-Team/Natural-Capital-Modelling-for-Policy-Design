@@ -54,7 +54,7 @@ function flooding_transfer_table = fcn_run_flooding_transfer_from_results(cell_i
     flooding_transfer_table = array2table(nan(cell_info.ncells, 2), ...
                                           'VariableNames', ...
                                           {'new2kid', ...
-                                           'flood_value'});
+                                           elm_option_string});
     flooding_transfer_table.new2kid = cell_info.new2kid;    % Fill in cell ids
     
     % Calculate indicator and index of all cell ids to changed cells
@@ -77,8 +77,8 @@ function flooding_transfer_table = fcn_run_flooding_transfer_from_results(cell_i
     
     % Calculate flood value for each cell with given landcover change
     % !!! select whether to multiply by elm or nfm hectares here (nfm preferred) !!!
-    flooding_transfer_table.flood_value(cell2chgcell_ind) = floodvalue_cell(cell2chgcell_idx(cell2chgcell_ind)) .* nfm_ha_adjusted(cell2chgcell_ind);
-    flooding_transfer_table.flood_value(isnan(flooding_transfer_table.flood_value)) = 0; % these areas are not suitable for NFM
+    flooding_transfer_table.(elm_option_string)(cell2chgcell_ind) = floodvalue_cell(cell2chgcell_idx(cell2chgcell_ind)) .* nfm_ha_adjusted(cell2chgcell_ind);
+    flooding_transfer_table.(elm_option_string)(isnan(flooding_transfer_table.(elm_option_string))) = 0; % these areas are not suitable for NFM
 %     water_table.flood_value(cell2chgcell_ind) = water_floodvalue_cell(cell2chgcell_idx(cell2chgcell_ind)) .* elm_ha_option(cell2chgcell_ind);
 
 end

@@ -11,6 +11,7 @@ function paths = fcn_set_data_paths()
 
     paths.data_out                         = [parent_dir, defra_dir, 'Data\'];
     paths.cplex_out                        = [parent_dir, defra_dir, 'Cplex\'];
+    paths.NEV_code_folder                  = [parent_dir, 'NEV\'];
     paths.agriculture_data_folder          = [parent_dir, nev_dir, 'Agriculture\'];
     paths.agricultureghg_data_folder       = [parent_dir, nev_dir, 'GHG\'];
     paths.climate_data_folder              = [parent_dir, nev_dir, 'Climate\'];
@@ -28,4 +29,5 @@ function paths = fcn_set_data_paths()
     paths.water_data_folder                = [parent_dir, nev_dir, 'Water\'];
     paths.water_transfer_data_folder       = [parent_dir, nev_dir, 'Water Transfer\'];
     paths.rec_data_folder                  = [parent_dir, nev_dir, 'Recreation\'];
+    paths.water_runs_folder                = [parent_dir, 'water-runs/MAT Files/'];    
 end

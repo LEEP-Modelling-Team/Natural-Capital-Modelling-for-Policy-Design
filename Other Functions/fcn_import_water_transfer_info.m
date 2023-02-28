@@ -1,6 +1,6 @@
 function [water_transfer_results, water_transfer_cell2subctch, nfm_data] = fcn_import_water_transfer_info(conn, NEV)
    
-% fcn_import_water_quality_info.m
+    % fcn_import_water_quality_info.m
     % ===============================
     % Load data necessary for calculating water quality benefits in the 
     % two_run_elm_options.m code. Specifically the outputs of this function
@@ -8,10 +8,10 @@ function [water_transfer_results, water_transfer_cell2subctch, nfm_data] = fcn_i
 
     % (a) Load water quality results from .mat file
     % ---------------------------------------------
-    load([NEV.path_data_water 'water_arable2sng.mat'],  'water_arable2sng')
-    load([NEV.path_data_water 'water_arable2wood.mat'], 'water_arable2wood')
-    load([NEV.path_data_water 'water_grass2sng.mat'],   'water_grass2sng')
-    load([NEV.path_data_water 'water_grass2wood.mat'],  'water_grass2wood')
+    load([NEV.water_runs_folder 'water_arable2sng.mat'],  'water_arable2sng')
+    load([NEV.water_runs_folder 'water_arable2wood.mat'], 'water_arable2wood')
+    load([NEV.water_runs_folder 'water_grass2sng.mat'],   'water_grass2sng')
+    load([NEV.water_runs_folder 'water_grass2wood.mat'],  'water_grass2wood')
     
     water_transfer_results.arable_reversion_sng_access = water_arable2sng;
     water_transfer_results.arable_reversion_sng_noaccess = water_arable2sng;
