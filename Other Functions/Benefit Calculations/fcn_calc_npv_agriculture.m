@@ -1,20 +1,28 @@
 function [npv_farm] = fcn_calc_npv_agriculture(baseline, es_agriculture, MP)
 
+    % NEV farm data
+    % -------------
     % For land use change in each year of the 40 year NEV time series
     % calculate a npv of cost or benefit for a permanent land use change
     % expressed as a npv in MP.base_year and in a price base for 
     % MP.price_year
+    
+    % Constants
+    % ---------
+    yrs_NEV  = MP.num_years;
+    yrs_tser = 100;
+    N        = size(es_agriculture.farm_profit,1);
         
     % farm profit change
     % ------------------
     % Farm profits are a 40 year time series of undiscounted returns to
     % agriculture on each cell
-    farm_profit_chg = baseline.farm_profit - es_agriculture.farm_profit;
-    yrs_NEV = size(farm_profit_chg,2);    
+    farm_profit_chg = es_agriculture.farm_profit - baseline.farm_profit;
+
     
     % npv of time series from each year to end of time series    
     % -------------------------------------------------------
-    npv_NEV_farm = zeros(size(farm_profit_chg));
+    npv_NEV_farm = zeros(N, yrs_NEV);
     for t =1:yrs_NEV
         npv_NEV_farm(:,t) = sum(farm_profit_chg(:,t:end) ./ (1 + MP.discount_rate).^(1:yrs_NEV-t+1), 2);
     end

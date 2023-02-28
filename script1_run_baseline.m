@@ -164,7 +164,14 @@ if MP.run_agriculture
         eval(['es_agriculture_rescale.ghg_', vars_all{i}, '_ann = es_agriculture.ghg_', vars_all{i}, '_ann.*rescale_ha;']);        
     end 
     es_agriculture_rescale.ghg_farm_ann = es_agriculture_rescale.ghg_arable_ann + es_agriculture_rescale.ghg_grass_ann + es_agriculture_rescale.ghg_livestock_ann;
-                                     
+                               
+    % Rescale: food
+    % -------------
+    es_agriculture_rescale.arable_food = es_agriculture.food  .* rescale_arable_ha;
+    es_agriculture_rescale.dairy_food  = es_agriculture.dairy .* rescale_grass_ha;
+    es_agriculture_rescale.beef_food   = es_agriculture.beef  .* rescale_grass_ha;
+    es_agriculture_rescale.sheep_food  = es_agriculture.sheep .* rescale_grass_ha;
+    
 end
 
 % (b) Forestry (+ GHG)

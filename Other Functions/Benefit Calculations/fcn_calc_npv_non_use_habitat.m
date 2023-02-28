@@ -25,11 +25,11 @@ function benefit_nuhabitat_npv = fcn_calc_npv_non_use_habitat(MP, elm_option, es
         end
     else
         if contains(elm_option, 'noaccess')            
-            NEV_nuhabitat_option_wood = es_non_use_habitat_all.destocking_reversion_wood_noaccess.nu_habitat_val_wood;            
-            NEV_nuhabitat_option_sng  = es_non_use_habitat_all.destocking_reversion_sng_noaccess.nu_habitat_val_sngrass;
+            NEV_nuhabitat_option_wood = es_non_use_habitat_all.destocking_wood_noaccess.nu_habitat_val_wood;            
+            NEV_nuhabitat_option_sng  = es_non_use_habitat_all.destocking_sng_noaccess.nu_habitat_val_sngrass;
         else
-            NEV_nuhabitat_option_wood = es_non_use_habitat_all.destocking_reversion_wood_access.nu_habitat_val_wood;
-            NEV_nuhabitat_option_sng  = es_non_use_habitat_all.destocking_reversion_sng_access.nu_habitat_val_sngrass;
+            NEV_nuhabitat_option_wood = es_non_use_habitat_all.destocking_wood_access.nu_habitat_val_wood;
+            NEV_nuhabitat_option_sng  = es_non_use_habitat_all.destocking_sng_access.nu_habitat_val_sngrass;
         end
     end
    

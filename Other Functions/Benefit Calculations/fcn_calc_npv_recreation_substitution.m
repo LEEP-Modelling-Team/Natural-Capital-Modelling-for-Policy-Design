@@ -25,8 +25,8 @@ function [benefit_rec_npv, cost_rec_npv] = fcn_calc_npv_recreation_substitution(
             NEV_rec_option_wood = es_recreation_all.arable_reversion_wood_access.rec_val;
             NEV_rec_option_sng  = es_recreation_all.arable_reversion_sng_access.rec_val;
         else
-            NEV_rec_option_wood = es_recreation_all.destocking_reversion_wood_access.rec_val;
-            NEV_rec_option_sng  = es_recreation_all.destocking_reversion_sng_access.rec_val;
+            NEV_rec_option_wood = es_recreation_all.destocking_wood_access.rec_val;
+            NEV_rec_option_sng  = es_recreation_all.destocking_sng_access.rec_val;
         end
     end
    

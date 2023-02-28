@@ -11,18 +11,18 @@ function benefit_flood_npv = fcn_calc_npv_water_flood(MP, elm_option, es_flood_a
     % ---------
     yrs_NEV  = MP.num_years;
     yrs_tser = 100;
-    N        = height(es_flood_all);
+    N        = height(es_flood_all.arable_reversion_wood_noaccess);
     
     % NEV Flood Values Time Series
     % ----------------------------
     % Note: Access & No Access make no difference to flood benefits, so
     %       just use access results in both cases.
     if contains(elm_option, 'arable')
-        NEV_flood_option_wood = es_flood_all.arable_reversion_wood_access;
-        NEV_flood_option_sng  = es_flood_all.arable_reversion_sng_access;
+        NEV_flood_option_wood = es_flood_all.arable_reversion_wood_access.flood_value;
+        NEV_flood_option_sng  = es_flood_all.arable_reversion_sng_access.flood_value;
     else
-        NEV_flood_option_wood = es_flood_all.destocking_reversion_wood_access;
-        NEV_flood_option_sng  = es_flood_all.destocking_reversion_sng_access;
+        NEV_flood_option_wood = es_flood_all.destocking_wood_access.flood_value;
+        NEV_flood_option_sng  = es_flood_all.destocking_sng_access.flood_value;
     end
    
     % Extend to 100 year time series

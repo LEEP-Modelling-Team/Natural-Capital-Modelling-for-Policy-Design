@@ -105,6 +105,45 @@ function MP = fcn_set_model_parameters(conn, json, server_flag)
     MP.forest_growth_wgt  = 1./(1 + exp(-s*(tser - mu)));    
     
     
+    % Food Imports co2
+    % ----------------
+    %  Factors to translate farm yields/stocks to quantities of food
+    MP.farm2food_arable = 1;  % tonnes 
+    MP.farm2food_wheat  = 1;  % tonnes 
+    MP.farm2food_osr    = 1;  % tonnes 
+    MP.farm2food_wbar   = 1;  % tonnes 
+    MP.farm2food_sbar   = 1;  % tonnes 
+    MP.farm2food_pot    = 1;  % tonnes 
+    MP.farm2food_sb     = 1;  % tonnes 
+    MP.farm2food_other  = 1;  % tonnes 
+    MP.farm2food_dairy  = 8153 * 0.564 * 1.03 * 1/1000;  
+                              % head of dairy to tonnes of milk per year
+                              %   8153   litres per year from milking cows over 2 years (ADHB, 2021)
+                              %   1.03   litres to kg
+                              %   0.564  milking cows as proportion of dairy herd (average 2014-18, ADHB) 
+                              %   1/1000 kg to tonnnes
+    MP.farm2food_beef   = 0.136;
+                              % head of beef to tonnes of dead weight beef per year 
+                              %   deadweight meat production per head of beef herd (average 2014-18, ADHB) 
+    MP.farm2food_sheep  = 0.00871;  
+                              % head of sheep to tonnes of dead weight lamb & mutton  
+                              %   deadweight meat production per head of sheep herd (average 2014-18, ADHB) 
+    
+    %  Factors to translate quantities of food imports to tonnes co2e per year
+    %  Calculated from faostat, eurostat and UK gov figures
+    MP.food2co2_arable = 0.2498;  % arable
+    MP.food2co2_wheat  = 0.2498;  % arable
+    MP.food2co2_osr    = 0.2498;  % arable
+    MP.food2co2_wbar   = 0.2498;  % arable
+    MP.food2co2_sbar   = 0.2498;  % arable
+    MP.food2co2_pot    = 0.2498;  % arable
+    MP.food2co2_sb     = 0.2498;  % arable
+    MP.food2co2_other  = 0.2498;  % arable
+    MP.food2co2_dairy  = 0.7566;
+    MP.food2co2_beef   = 18.3413;
+    MP.food2co2_sheep  = 23.4938;    
+    
+    
     % RPI Adjustment Factors 
     % ----------------------    
     % Bring in rpi index data (1987-2020)
