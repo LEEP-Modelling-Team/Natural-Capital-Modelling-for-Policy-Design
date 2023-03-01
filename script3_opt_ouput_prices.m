@@ -9,16 +9,23 @@ rng(23112010)
 
 % 1. Initialise
 % -------------
-carbon_price_string = 'non_trade_central';
-remove_nu_habitat = true;
 
+% Model
+carbon_price_string = 'scc';
+drop_vars = {'habitat_non_use', 'biodiversity'};
 unscaled_budget = 1e9;
-payment_mechanism = 'fr_es';
-numP = 9;
+payment_mechanism = 'fr_env';
 
-data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
+% Markup
+markup = 1.15;
+
+% data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
 % data_folder = 'D:\Documents\Data\Defra-ELMS\';
-data_path = [data_folder, 'Script 2 (ELM Option Runs)/elm_option_results_', carbon_price_string, '.mat'];
+% data_folder = 'D:\myGitHub\defra-elms\';
+% data_path = [data_folder, 'Script 2 (ELM Option Runs)/elm_option_results_', carbon_price_string, '.mat'];
+cplex_folder = 'D:\myGitHub\defra-elms\Cplex\';
+data_folder  = 'D:\myGitHub\defra-elms\Data\';
+data_path = [data_folder, 'elm_option_results_', carbon_price_string, '.mat'];
 
 sample_size = 5000; % either 'no' or a number representing the sample size
 
@@ -40,32 +47,31 @@ end
 % --------------------------------------------------------
 Niter = 10;
 
-for iter = 3:Niter
-
+for iter = 1:Niter
     
     % (a) Load new sample of data
     % ---------------------------
-    [b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat, payment_mechanism);
-    q(:, 10, :) = [];    
+    [b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup);
+    num_prices = length(price_vars);
     
-    
-    % (b) Linear search for maximum possible prices
+    % (b) Scale quantities
+    % --------------------
+    prices_scale = reshape(permute(q, [1 3 2]),[], size(q,2));
+    prices_scale(prices_scale==0) = NaN;
+    prices_scale = nanstd(prices_scale);
+    q = q ./ repmat(prices_scale, [size(q,1), 1, size(q,3)]);
+           
+    % (c) Linear search for maximum possible prices
     % ---------------------------------------------
     constraintfunc = @(p) mycon_ES(p, q, c, budget, elm_options);
-    prices_max = zeros(1, numP);
+    prices_max = zeros(1, num_prices);
     start_rate = 5;
-    if strcmp(payment_mechanism, 'fr_env')
-        for i = 1:numP
-            env_outs_array_i = squeeze(q(:, i, :));
-            prices_max(i) = fcn_lin_search(numP,i,start_rate,0.01,constraintfunc,q,c,budget,elm_options);
-        end
-    elseif strcmp(payment_mechanism, 'fr_es')
-        prices_max = ones(1, numP);
+    for i = 1:num_prices
+        prices_max(i) = fcn_lin_search(num_prices,i,start_rate,0.01,constraintfunc,q,c,budget,elm_options);
     end
     prices_min = zeros(size(prices_max));
-
     
-    % (c) Find feasible prices
+    % (d) Find feasible prices
     % ------------------------  
     Nfeas = 40;
     [prices_feasible, benefits_feasible] = fcn_find_feasible_prices(budget, b, c, q, elm_options, prices_min, prices_max, Nfeas);
@@ -82,31 +88,31 @@ for iter = 3:Niter
         prices_feasible   = [prices_feasible;   prices_good(benefits_good>0,:)];
         benefits_feasible = [benefits_feasible; benefits_good(benefits_good>0,:)];
     end  
-            
     
-    % (d) Find local optima prices
+    % (e) Find local optima prices
     % ----------------------------  
     Ngood = 50;
     [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, b, c, q, elm_options, prices_max, prices_feasible, benefits_feasible, Ngood);
 
     Ngood = size(prices_locopt,1);
-    mfile.prices_good(end+1:end+Ngood, 1:numP) = prices_locopt;
+    mfile.prices_good(end+1:end+Ngood, 1:num_prices) = prices_locopt;
     mfile.benefits_good(end+1:end+Ngood,1)     = benefits_locopt;                                        
     
 
-    % (e) MIP for global optimum
+    % (f) MIP for global optimum
     % --------------------------  
     prices_lb = min(prices_locopt)' * 0;
-    prices_ub = max(prices_locopt)' * 1.25;
+    prices_ub = max(prices_locopt)' * 1.5;
 
     uptake_locopt = myfun_uptake(prices_locopt(1, :), q, c, elm_options)';
     uptake_locopt = uptake_locopt(:)';
     
-    cplex_time = 1800;
-    [x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_time);
+    cplex_options.time = 1800;
+    cplex_options.logs = cplex_folder;    
+    [x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
                                                                   
-    mfile.prices(iter, 1:numP) = prices_milp;
-    mfile.benefits(iter,1)     = fval_milp;
+    mfile.prices(iter, 1:num_prices) = prices_milp ./ prices_scale;
+    mfile.benefits(iter,1)           = fval_milp;
         
 end    
     
@@ -117,18 +123,26 @@ sample_size = 'no';  % all data
 
 % (a) Load data
 % -------------
-[b, c, q, budget, elm_options, new2kid] = load_data(sample_size, unscaled_budget, data_path, remove_nu_habitat, payment_mechanism);
-q(:, 10, :) = [];    
+[b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup);
+num_prices = length(price_vars);
+    
+% (b) Scale quantities
+% --------------------
+prices_scale = reshape(permute(q, [1 3 2]),[], size(q,2));
+prices_scale(prices_scale==0) = NaN;
+prices_scale = nanstd(prices_scale);
+q = q ./ repmat(prices_scale, [size(q,1), 1, size(q,3)]);
 
-% (b) Price bounds from sample searches
+% (c) Price bounds from sample searches
 % -------------------------------------
 matfile_name = ['prices_' payment_mechanism '_5k_sample.mat'];
 load(matfile_name, 'prices');
+prices = prices .* prices_scale;
 
 prices_lb = min(prices)';
 prices_ub = max(prices)';
 
-% (c) Find feasible prices
+% (d) Find feasible prices
 % ------------------------  
 Nfeas = 40;
 [prices_feasible, benefits_feasible] = fcn_find_feasible_prices(budget, b, c, q, elm_options, prices_lb'*0.75, prices_ub'*1.25, Nfeas);
@@ -163,9 +177,10 @@ prices_lb = zeros(size(prices_lb));
 uptake_locopt = myfun_uptake(prices_locopt(1, :), q, c, elm_options)';
 uptake_locopt = uptake_locopt(:)';
 
-cplex_time = 61200;
+cplex_options.time = 15000;
+cplex_options.logs = cplex_folder;    
 [x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_time);
-
+prices_milp = prices_milp ./ prices_scale;
 
 % 4. Save Solution
 % ----------------

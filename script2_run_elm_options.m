@@ -179,9 +179,9 @@ for option_i = 1:num_elm_options
     elm_option                       = elm_options{option_i};                                   % ELM option string, to create field names
     elm_ha.(elm_option)              = nan(cell_info.ncells, 1);                                % hectares used to implement ELM option
     benefits.(elm_option)            = nan(cell_info.ncells, num_scheme_years);                 % total benefits
-    benefits_table.(elm_option)      = nan(cell_info.ncells, num_benefits+1, num_scheme_years); % benefits (see above)
+    benefits_table.(elm_option)      = nan(cell_info.ncells, num_benefits, num_scheme_years); % benefits (see above)
     costs.(elm_option)               = nan(cell_info.ncells, num_scheme_years);                 % total costs
-    costs_table.(elm_option)         = nan(cell_info.ncells, num_costs+1, num_scheme_years);    % costs (see above)
+    costs_table.(elm_option)         = nan(cell_info.ncells, num_costs, num_scheme_years);    % costs (see above)
     benefit_cost_ratios.(elm_option) = nan(cell_info.ncells, num_scheme_years);                 % benefit:cost ratio
     env_outs.(elm_option)            = nan(cell_info.ncells, num_env_outs, num_scheme_years);   % environmental outcomes (see above)
     es_outs.(elm_option)             = nan(cell_info.ncells, num_es_outs, num_scheme_years);    % ecosystem service outcomes (see above)
@@ -514,12 +514,9 @@ for option_i = 1:num_elm_options
                       benefit_pollination_non_use_npv(:,t), ...
                       benefit_habitat_non_use_npv(:,t), ...
                       benefit_bio_npv(:,t)];
-        benefits_t = [nansum(benefits_t,2), benefits_t];
-        benefits_t = array2table(benefits_t, 'VariableNames', ['total', vars_benefits]);
-        
         % Accumulate benefits for each option and scheme year
-        benefits.(elm_option)(:, t)          = benefits_t.total;
-        benefits_table.(elm_option)(:, :, t) = table2array(benefits_t);    
+        benefits.(elm_option)(:, t)          = nansum(benefits_t,2);
+        benefits_table.(elm_option)(:, :, t) = benefits_t;    
         
         % 4.13 Collect costs for each scheme year
         % ---------------------------------------
@@ -527,19 +524,16 @@ for option_i = 1:num_elm_options
                    cost_forestry_npv(:,t), ...
                   -benefit_forestry_npv(:,t), ...
                    cost_rec_npv(:,t)];
-        costs_t = [nansum(costs_t,2), costs_t];
-        costs_t = array2table(costs_t, 'VariableNames', ['total', vars_costs]);
-        
         % Accumulate costs for each option and scheme year
-        costs.(elm_option)(:, t)          = costs_t.total;
-        costs_table.(elm_option)(:, :, t) = table2array(costs_t);    
+        costs.(elm_option)(:, t)          = nansum(costs_t,2);
+        costs_table.(elm_option)(:, :, t) = costs_t;    
         
         % 4.14 Calculate benefit cost ratio using NPVs
         % --------------------------------------------
         % Note: Introduces NaN and Inf values by dividing by zero
         % all of these cases are where there is no farm_ha to start with
         % these are removed in payment mechanisms so shouldn't be a problem
-        benefit_cost_ratios.(elm_option)(:, t) = benefits_t.total ./ costs_t.total; 
+        benefit_cost_ratios.(elm_option)(:, t) = benefits.(elm_option)(:, t)  ./ costs.(elm_option)(:, t); 
         
         % 4.15 Collect ES outcomes as ES values
         % -------------------------------------
@@ -554,8 +548,7 @@ for option_i = 1:num_elm_options
                      benefit_pollination_non_use_npv(:,t), ...
                      benefit_habitat_non_use_npv(:,t), ...
                      benefit_bio_npv(:,t)];
-        es_outs_t = array2table(es_outs_t, 'VariableNames', vars_es_outs);  
-        es_outs.(elm_option)(:, :, t) = table2array(es_outs_t);
+        es_outs.(elm_option)(:, :, t) = es_outs_t;
     end
         
 end
@@ -637,8 +630,7 @@ for option_i = 1:num_elm_options
                       quantity_totp(:,t), ...
                       quantity_pollinators(:,t), ...
                       quantity_bio(:,t)];
-         env_outs_t = array2table(env_outs_t, 'VariableNames', vars_env_outs);
-         env_outs.(elm_option)(:, :, t) = table2array(env_outs_t);
+         env_outs.(elm_option)(:, :, t) = env_outs_t;
     end
     
 end    
@@ -648,6 +640,7 @@ end
 % Depends on what carbon price has been used
 % This depends on choice of recreation access in MP.site_type
 save([MP.data_out 'elm_option_results_', MP.carbon_price_str, '.mat'], ...
+     'cell_info', ...
      'num_benefits', ...
      'num_costs', ...
      'num_env_outs', ...

@@ -19,7 +19,7 @@
 %    prices_ub          [1 x num_env_out] vector of upper bount on prices
 %    cplex_time         seconds to allow cplex to run before terminate
 
-function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, warm_start_prices, warm_start_uptake, price_lb, price_ub, cplex_time)
+function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, warm_start_prices, warm_start_uptake, price_lb, price_ub, cplex_options)
     
     % 1. Initialise
     % =============
@@ -38,10 +38,11 @@ function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, bud
 	% cplex.Param.emphasis.mip.Cur = 1; % emphasise feasibility
     cplex.Param.mip.strategy.search.Cur = 2;
     cplex.Param.parallel.Cur = 1;
-    cplex.Param.timelimit.Cur = cplex_time;
     cplex.Param.mip.tolerances.integrality.Cur = 0;
     cplex.Param.mip.tolerances.mipgap.Cur = 0;
-    
+    cplex.Param.timelimit.Cur = cplex_options.time;
+    % cplex.Param.output.clonelog.Cur = cplex_options.logs;
+    cplex.Param.workdir.Cur = cplex_options.logs;
     
     % 1.2 Constants
     % -------------
