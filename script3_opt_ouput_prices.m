@@ -6,29 +6,32 @@
 clear
 rng(23112010)
 
-
 % 1. Initialise
 % -------------
 
 % Model
+% -----
 carbon_price_string = 'scc';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 unscaled_budget = 1e9;
-payment_mechanism = 'fr_env';
+payment_mechanism = 'fr_es';
 
 % Markup
+% ------
 markup = 1.15;
 
+% Paths to Data & Cplex Working Dir
+% ---------------------------------
 % data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
 % data_folder = 'D:\Documents\Data\Defra-ELMS\';
-% data_folder = 'D:\myGitHub\defra-elms\';
 % data_path = [data_folder, 'Script 2 (ELM Option Runs)/elm_option_results_', carbon_price_string, '.mat'];
 cplex_folder = 'D:\myGitHub\defra-elms\Cplex\';
 data_folder  = 'D:\myGitHub\defra-elms\Data\';
 data_path = [data_folder, 'elm_option_results_', carbon_price_string, '.mat'];
 
-sample_size = 5000; % either 'no' or a number representing the sample size
-
+% Search Sample
+% -------------
+sample_size = 500; % either 'no' or a number representing the sample size
 if sample_size > 1000
     eval(['matfile_name = ''prices_' payment_mechanism '_' num2str(round(sample_size/1000)) 'k_sample.mat'';']);
 else
@@ -51,7 +54,8 @@ for iter = 1:Niter
     
     % (a) Load new sample of data
     % ---------------------------
-    [b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup);
+    data_year = 1;    % year in which scheme run 
+    [b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, data_year);
     num_prices = length(price_vars);
     
     % (b) Scale quantities
@@ -123,7 +127,8 @@ sample_size = 'no';  % all data
 
 % (a) Load data
 % -------------
-[b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup);
+data_year = 1;    
+[b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, data_year);
 num_prices = length(price_vars);
     
 % (b) Scale quantities
@@ -135,7 +140,7 @@ q = q ./ repmat(prices_scale, [size(q,1), 1, size(q,3)]);
 
 % (c) Price bounds from sample searches
 % -------------------------------------
-matfile_name = ['prices_' payment_mechanism '_5k_sample.mat'];
+% matfile_name = ['prices_' payment_mechanism '_500_sample.mat'];
 load(matfile_name, 'prices');
 prices = prices .* prices_scale;
 

@@ -1,4 +1,4 @@
-function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_num, unscaled_budget, data_path, payment_mechanism, drop_vars, markup)
+function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_num, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, data_year)
 
     % (1) Set up
     %  ==========
@@ -94,13 +94,18 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
     end
         
     % (2) Extract Sample Data
-    %  ======================
-    benefits_year  = nan(cell_info.ncells, num_elm_options);
-    costs_year     = nan(cell_info.ncells, num_elm_options);
+    % =======================
+    % Note: All data has a 40 year time series for each cell for scheme  
+    %       costs & benefits when implemented in each of those years.
+    %       Those are expressed in npv in the base_year in £price_year.
+    %       Model currently extracting just single year's data given by 
+    %       data_year.
+    benefits_year = nan(cell_info.ncells, num_elm_options);
+    costs_year    = nan(cell_info.ncells, num_elm_options);
     for k = 1:num_elm_options
-        benefits_year(:, k)         = benefits.(elm_options{k})(:, 1);
-        costs_year(:, k)            = costs.(elm_options{k})(:, 1);
-        quantities.(elm_options{k}) = quantities.(elm_options{k})(:, :, 1);
+        benefits_year(:, k)         = benefits.(elm_options{k})(:, data_year);
+        costs_year(:, k)            = costs.(elm_options{k})(:, data_year);
+        quantities.(elm_options{k}) = quantities.(elm_options{k})(:, :, data_year);
     end
 
     % Use farmer_sample_ind to select farmers to include in price search
