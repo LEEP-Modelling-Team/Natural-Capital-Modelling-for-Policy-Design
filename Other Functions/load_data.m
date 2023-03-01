@@ -55,6 +55,9 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
         case 'fr_env'
             vars_price = vars_env_outs;
             quantities = env_outs;
+        case 'fr_act'
+            vars_price = elm_options;
+            quantities = elm_ha;            
     end
     
     if ~isempty(drop_vars)
@@ -63,16 +66,18 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
 
             % Remove from Quantities
             % ----------------------
-            [indvar, idxvar] = ismember(var, vars_price);            
-            if indvar
-                % Remove from var list
-                vars_price(idxvar) = [];                                
-                % Remove from quantities
-                for k = 1:length(elm_options)                 
-                    quantities.(elm_options{k})(:,idxvar,:) = [];
+            if ~strcmp(payment_mechanism, 'fr_act')
+                [indvar, idxvar] = ismember(var, vars_price);            
+                if indvar
+                    % Remove from var list
+                    vars_price(idxvar) = [];                                
+                    % Remove from quantities                
+                    for k = 1:length(elm_options)                 
+                        quantities.(elm_options{k})(:,idxvar,:) = [];
+                    end
                 end
             end
-                
+            
             % Remove from Benefits
             % --------------------
             [indvar, idxvar] = ismember(var, vars_benefits);            
@@ -105,7 +110,9 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
     for k = 1:num_elm_options
         benefits_year(:, k)         = benefits.(elm_options{k})(:, data_year);
         costs_year(:, k)            = costs.(elm_options{k})(:, data_year);
-        quantities.(elm_options{k}) = quantities.(elm_options{k})(:, :, data_year);
+        if ~strcmp(payment_mechanism, 'fr_act')
+            quantities.(elm_options{k}) = quantities.(elm_options{k})(:, :, data_year);
+        end
     end
 
     % Use farmer_sample_ind to select farmers to include in price search
@@ -113,12 +120,16 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
     % Extract relevant rows from above arrays/structures
     b = benefits_year(farmer_sample_ind, :);
     c = costs_year(farmer_sample_ind, :);
-    q = [];
-    for k = 1:num_elm_options
-        quantities.(elm_options{k}) = quantities.(elm_options{k})(farmer_sample_ind, :);
-        q = cat(3, q, quantities.(elm_options{k}));
-    end
     c = c .* markup;
+    q = [];
+    if strcmp(payment_mechanism, 'fr_act')
+        q = table2array(struct2table(quantities));
+    else
+        for k = 1:num_elm_options
+            quantities.(elm_options{k}) = quantities.(elm_options{k})(farmer_sample_ind, :);
+            q = cat(3, q, quantities.(elm_options{k}));
+        end
+    end
     new2kid = cell_info.new2kid;
     
 end

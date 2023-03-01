@@ -34,10 +34,10 @@ function [max_rates, ids_to_remove, unique_options] = fcn_find_max_prices(c, q, 
             
             %% 1. COSTS IN ASCENDING ORDER
             %  ===========================
-            cost_sorted = nan(length(c), width(c));
-            cells_sorted = nan(length(q), width(q));
-            q_sorted = nan(length(q), width(q));
-            for i = 1:width(c)
+            cost_sorted  = nan(length(c), size(c,2));
+            cells_sorted = nan(length(q), size(q,2));
+            q_sorted = nan(length(q), size(q,2));
+            for i = 1:size(c,2)
                 [cost_sorted(:, i), idx] = sort(c(:, i),'ascend');
                 cells_sorted(:, i) = cell_ids(idx);
                 q_sorted(:, i) = q(idx);
@@ -46,13 +46,13 @@ function [max_rates, ids_to_remove, unique_options] = fcn_find_max_prices(c, q, 
 
             %% 2. FIND RATES THAT EXHAUST THE BUDGET
             %  =====================================
-            max_rates = zeros(1, width(q));
-            excluded_cells = ones(length(cell_ids), width(q));
-            for i = 1:width(q)
+            max_rates = zeros(1, size(q,2));
+            excluded_cells = ones(length(cell_ids), size(q,2));
+            for i = 1:size(q,2)
                 p = max_rates(i);
                 surplus = (p .* q_sorted(:, i) - cost_sorted(:, i));
                 while ~any(any(cumsum(surplus(surplus > 0), 'omitnan') > budget))
-                    p = p + 0.01;
+                    p = p + 100;
                     surplus = (p .* q_sorted(:, i) - cost_sorted(:, i));
                 end
                 max_rates(i) = p;
@@ -61,7 +61,7 @@ function [max_rates, ids_to_remove, unique_options] = fcn_find_max_prices(c, q, 
 
             %% 3. FIND CELLS NEVER INTO ANY SCHEME
             %  ===================================
-            excluded_idx = sum(excluded_cells, 2) == width(q);
+            excluded_idx = sum(excluded_cells, 2) == size(q,2);
             ids_to_remove = cell_ids(excluded_idx);
         
         case {'fr_env'}
@@ -98,7 +98,7 @@ function [max_rates, ids_to_remove, unique_options] = fcn_find_max_prices(c, q, 
             end
             %% 2. FIND CELLS NEVER INTO ANY SCHEME
             %  ===================================
-            excluded_idx = sum(excluded_cells, 2) == width(q);
+            excluded_idx = sum(excluded_cells, 2) == size(q,2);
             ids_to_remove = cell_ids(excluded_idx);
     end
 end

@@ -43,14 +43,24 @@ function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] 
     % cells that are never selected under any option when the budget is
     % exhausted
     fprintf('\n  Reducing problem size...\n');
-    [max_rates, ids_to_remove] = fcn_find_max_prices(c, q, cell_ids, budget);    
-    [~, idx, ~] = intersect(cell_ids, ids_to_remove);
-    fprintf('  Removed %u rows\n  ------------------------ \n', length(ids_to_remove));
+    max_rates1      = zeros(1, length(elm_options));
+    excluded_cells1 = ones(size(c,1),1);
+    for i = 1:length(elm_options)
+        [price_pts, sortidx] = sort(c(:,i)./q(:,i));
+        ind_over_budget = (cumsum(q(sortidx,i)) .* price_pts) >= budget;
+        excluded_cells1 = excluded_cells1 .* ind_over_budget(sortidx);
+        max_rates1(i) = price_pts(find(ind_over_budget, 1)-1);
+    end
     
-    b(idx, :) = [];
-    c(idx, :) = [];
-    q(idx, :) = [];
-    cell_ids(idx, :) = [];
+    [max_rates, ids_to_remove] = fcn_find_max_prices(c, q, cell_ids, budget, 'fr_act');    
+    [~, excluded_cells , ~] = intersect(cell_ids, ids_to_remove);
+    
+    fprintf('  Removed %u rows\n  ------------------------ \n', sum(excluded_cells));
+    excluded_cells = logical(excluded_cells);
+    b(excluded_cells, :) = [];
+    c(excluded_cells, :) = [];
+    q(excluded_cells, :) = [];
+    cell_ids(excluded_cells, :) = [];
 
     % Calculate parameters based on the size of the matrix
     num_farmers = size(b, 1);
@@ -185,7 +195,7 @@ function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] 
     Aineq7_d = sparse(num_options, num_farmers * num_options);
     Aineq7 = [Aineq7_p, Aineq7_u, Aineq7_d];
 
-%     Bineq7 = Ro';
+%   Bineq7 = Ro';
     Bineq7 = max_rates';
     B7_lb = zeros(num_options, 1);
     B7_ub = Bineq7;
