@@ -125,7 +125,7 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
     c = costs_year(farmer_sample_ind, :);
     c = c .* markup;    
     q = [];
-    if strcmp(payment_mechanism, 'fr_act')
+    if any(strcmp(payment_mechanism, {'fr_act', 'fr_act_pctl', 'oc'}))
         q = table2array(struct2table(quantities));
     else
         for k = 1:num_elm_options

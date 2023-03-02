@@ -15,6 +15,7 @@ carbon_price_string = 'scc';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 unscaled_budget = 1e9;
 payment_mechanism = 'fr_env';
+budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
 
 % Markup
 % ------
@@ -200,12 +201,4 @@ solution.prices_locopt = prices_locopt;
 solution.prices_lb     = prices_lb;
 solution.prices_ub     = prices_ub;
 solution.new2kid       = new2kid;
-
-if strcmp(payment_mechanism, 'fr_env')
-    save('solution_fr_env_prices.mat', 'solution');
-elseif strcmp(payment_mechanism, 'fr_es')
-    save('solution_fr_es_prices.mat', 'solution');
-else
-    error('payment mechanism can only be ''fr_env'' or ''fr_es''')
-end
-
+save(['solution_' budget_str '_' payment_mechanism '_prices.mat'], 'solution');

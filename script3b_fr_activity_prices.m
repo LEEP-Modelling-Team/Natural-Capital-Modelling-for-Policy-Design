@@ -15,6 +15,7 @@ payment_mechanism = 'fr_act';
 carbon_price_string = 'scc';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 unscaled_budget = 1e9;
+budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
 
 % Markup
 % ------
@@ -88,7 +89,7 @@ cplex_options.logs = cplex_folder;
 % ----------------
 solution.prices  = prices_milp;
 solution.fval    = fval_milp;
-save('solution_fr_act_prices.mat', 'solution');                                                                                
+save(['solution_' budget_str '_' payment_mechanism '_prices.mat'], 'solution');                                                                         
 
 
 

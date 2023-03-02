@@ -1,20 +1,19 @@
-% script5_oc_payments.m
-% =====================
-%  Search for optimum flat rateprices for different payment mechanisms and 
-%  budgets
+% script5_fr_activity_pctl.m
+% ==========================
 
 clear
-rng(23112010)
 
 % 1. Initialise
 % -------------
 
 % Model
 % -----
-payment_mechanism = 'oc';
+payment_mechanism = 'fr_act_pctl';
 carbon_price_string = 'scc';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 unscaled_budget = 1e9;
+budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
+pctl = 50; % median prices
 
 % Markup
 % ------
@@ -41,14 +40,14 @@ num_farmers = size(b,1);
 
 % 3. Multiple Choice Knapsack Optimisation
 % ----------------------------------------
-[opt_cells, opt_choice, farm_payment] = fcn_payment_oc_mcknap(budget, new2kid, c, b);
+[prices, uptake, spend, fval] = fcn_payment_fr_act_pctl(b, c, q, budget, elm_options, pctl);
 
 % 4. Save Solution
 % ----------------
 solution.opt_cells    = opt_cells;
 solution.opt_choice   = opt_choice;
 solution.farm_payment = farm_payment;
-save('solution_oc_payments.mat', 'solution');                                                                                
+save(['solution_' budget_str '_' payment_mechanism '_prices.mat'], 'solution');                                                                            
 
 
 

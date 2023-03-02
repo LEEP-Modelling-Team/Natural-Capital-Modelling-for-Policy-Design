@@ -4,16 +4,20 @@ function uptake = myfun_uptake(p, ES, C, elm_option)
     Nq = length(elm_option);
 
     % Determine which option each farmer would prefer at these prices
-    profit  = zeros(N, length(elm_option) + 1);
+    profit  = zeros(N, Nq+1);
     
     % Evaluate profit & cost for each option 
     if isstruct(ES) 
-        for i = 1:length(elm_option)
+        for i = 1:Nq
             profit(:, i + 1)  = p * ES.(elm_option{i})' - C(:, i)';
-        end
+        end     
     else
-        for i = 1:length(elm_option)
-            profit(:, i + 1) = p * ES(:, :, i)' - C(:, i)';
+        if ndims(ES) == 2
+             profit(:, 2:Nq+1) = p .* ES - C;
+        else
+            for i = 1:Nq
+                profit(:, i + 1) = p * ES(:, :, i)' - C(:, i)';
+            end
         end
     end
     
