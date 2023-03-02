@@ -1,13 +1,9 @@
-function [opt_cells, option_choice, farm_payment] = fcn_payment_oc_mcknap(budget, margin, cell_ids, costs, benefits)
+function [opt_cells, option_choice, farm_payment] = fcn_payment_oc_mcknap(budget, cell_ids, costs, benefits)
     
     %% (0) Set up
     %  ==========
-    
-    % (a) Adjust costs and benefit:cost ratio by margin
-    % -------------------------------------------------
-    costs = margin * costs;
-    
-    num_farms = length(cell_ids);
+   
+    num_farms   = length(cell_ids);
     num_options = size(costs, 2);
     benefits_transposed = benefits';
     costs_transposed = costs';

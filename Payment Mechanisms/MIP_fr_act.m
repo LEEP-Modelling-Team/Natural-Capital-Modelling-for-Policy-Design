@@ -1,13 +1,29 @@
-function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] = lp_fr_activity(elm_options, ...
-                                                                                        budget, ...
-                                                                                        markup, ...
-                                                                                        opp_costs, ...
-                                                                                        benefits, ...
-                                                                                        elm_ha, ...
-                                                                                        cell_ids)
+% MIP_fr_act
+% ==========
 
-    %% 1. INITIALISE
-    %  =============
+%  Purpose
+%  -------
+%  Maximises benefits suject to a budget constraint, by offering flat rate 
+%  prices to farmers for each different land use change option (fr_es).
+
+%  Inputs
+%  ------
+%    b                  [num_farmers x num_options] benefits from each option 
+%    c                  [num_farmers x num_options] costs of each option 
+%    q                  [num_farmers x num_options x num_options] quantities of env outs from each option  
+%    budget             Maximum spend   
+%    prices_lb          [1 x num_options] vector of lower bound on prices
+%    prices_ub          [1 x num_options] vector of upper bound on prices
+%    cplex_options      structure with cplex options
+%                         o time: secs to allow cplex to run 
+%                         o logs: folder in which to find warmstarts and
+%                                 write node logs
+
+function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, cplex_options)
+
+
+    % 1. Initialise
+    % =============
     
     % 1.1. Add the cplex path into matlab
     if ismac
@@ -20,49 +36,18 @@ function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] 
     % ------------------------------
     cplex = Cplex('elms_lp');
     cplex.Model.sense = 'minimize';
-    cplex.Param.emphasis.mip.Cur = 0;
+    cplex.Param.emphasis.mip.Cur = 0; % balanced
+	% cplex.Param.emphasis.mip.Cur = 1; % emphasise feasibility
     cplex.Param.mip.strategy.search.Cur = 2;
     cplex.Param.parallel.Cur = 1;
-%     cplex.Param.mip.tolerances.integrality.Cur = 0;
-%     cplex.Param.mip.tolerances.mipgap.Cur = 0;
-%     cplex.Param.conflict.algorithm.Cur = 6;
-%     cplex.Param.conflict.display.Cur = 2;
-%     cplex.Param.mip.tolerances.absmipgap.Cur = 0;
-%     cplex.DisplayFunc = '';
+    cplex.Param.mip.tolerances.integrality.Cur = 0;
+    cplex.Param.mip.tolerances.mipgap.Cur = 0;
+    cplex.Param.timelimit.Cur = cplex_options.time;
+    cplex.Param.workdir.Cur = cplex_options.logs;
+    %  cplex.DisplayFunc = '';   
     
-    %% 2. DECISION VARIABLES
-    %  =====================
-    fprintf('\n  Set data matrices for MIP optimisation \n  -------------------------------------- \n');
-    b = benefits(:, 1:length(elm_options));
-    c = opp_costs(:, 1:length(elm_options));
-    q = elm_ha(:, 1:length(elm_options));
-    c = markup * c; % add 15% markup
-    
-    % Reduce size of the problem: search for prices that would exhaust the
-    % entire budget for each option, calculate uptake and remove subset of
-    % cells that are never selected under any option when the budget is
-    % exhausted
-    fprintf('\n  Reducing problem size...\n');
-    max_rates1      = zeros(1, length(elm_options));
-    excluded_cells1 = ones(size(c,1),1);
-    for i = 1:length(elm_options)
-        [price_pts, sortidx] = sort(c(:,i)./q(:,i));
-        ind_over_budget = (cumsum(q(sortidx,i)) .* price_pts) >= budget;
-        excluded_cells1 = excluded_cells1 .* ind_over_budget(sortidx);
-        max_rates1(i) = price_pts(find(ind_over_budget, 1)-1);
-    end
-    
-    [max_rates, ids_to_remove] = fcn_find_max_prices(c, q, cell_ids, budget, 'fr_act');    
-    [~, excluded_cells , ~] = intersect(cell_ids, ids_to_remove);
-    
-    fprintf('  Removed %u rows\n  ------------------------ \n', sum(excluded_cells));
-    excluded_cells = logical(excluded_cells);
-    b(excluded_cells, :) = [];
-    c(excluded_cells, :) = [];
-    q(excluded_cells, :) = [];
-    cell_ids(excluded_cells, :) = [];
-
-    % Calculate parameters based on the size of the matrix
+    % 1.2 Constants
+    % -------------
     num_farmers = size(b, 1);
     num_options = size(b, 2);
     num_x = num_options + num_farmers + num_options * num_farmers;
@@ -85,23 +70,44 @@ function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] 
     S = max(Rf);
     T = 1;
 
-    % Set f, used in optimand
+    
+    % 2. Choice Variables
+    % ===================
+    %
+    %    Prices     Farm Utility       Activity Choice
+    %   --------   --------------   ---------------------  
+    %                                Farm1   ...  FarmN 
+    % [1 x Nprice]    [1 x N]      [1 x Nopt]   [1 x Nopt]
+    %      >0            >0           0-1          0-1 
+    
+    
+    % 3. Bounds for Choice Variables
+    % ==============================
+    lb = [prices_lb; sparse(num_farmers + num_options * num_farmers, 1)];
+    ub = [prices_ub; repelem(budget, num_farmers, 1); ones((num_options*num_farmers), 1)];     
+    
+
+    % 4. Cost vector
+    % ==============    
     f_p = sparse(num_options, 1);
     f_u = sparse(num_farmers, 1);
-    f_d = -bt(:);
-    f = [f_p; f_u; f_d];
-    
-    % Set variable bounds and types
-    lb    = sparse(num_options + num_farmers + num_options * num_farmers, 1);
-    ub    = [inf((num_options + num_farmers), 1); ones((num_options * num_farmers), 1)]; %
-    ctype = [repmat('C',1,(num_options + num_farmers)), repmat('I', 1, (num_options * num_farmers))];
+    f_x = -bt(:);
+    f = [f_p; f_u; f_x];
+    clear f_p f_u f_x
+   
+    % 5. Variable types
+    % =================
+    ctype = [repmat('C',1,(num_options + num_farmers)), repmat('B', 1, (num_options * num_farmers))];
     
     % Add to cplex class
     cplex.addCols(f, [], lb, ub, ctype);
 
-    %% 3. CONSTRAINTS
-    %  ==============
-    % 1st inequality (unit demand)
+    
+    % 6. Inequality Constraints
+    % =========================
+
+    % 6.1 Unit Demand
+    % ---------------
     Aineq1_p = sparse(num_farmers, num_options);
     Aineq1_u = sparse(num_farmers, num_farmers);
     Aineq1_d = kron(speye(num_farmers), ones(1, num_options));
@@ -189,19 +195,7 @@ function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] 
     
     clear Aineq6_p Aineq6_u Aineq6_d
 
-    % 7th inequality constraint: maximum price
-    Aineq7_p = speye(num_options);
-    Aineq7_u = sparse(num_options, num_farmers);
-    Aineq7_d = sparse(num_options, num_farmers * num_options);
-    Aineq7 = [Aineq7_p, Aineq7_u, Aineq7_d];
-
-%   Bineq7 = Ro';
-    Bineq7 = max_rates';
-    B7_lb = zeros(num_options, 1);
-    B7_ub = Bineq7;
-
-    clear Aineq7_p Aineq7_u Aineq7_d
-    
+   
     % 8th inequality constraint: x = 1 when Uf>0
     Aineq8_p = zeros(num_farmers, num_options);
     Aineq8_u = speye(num_farmers);
@@ -239,10 +233,10 @@ function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] 
     clear Aineq10_p Aineq10_u Aineq10_d
     
     % Combine all inequalities into one matrix
-    A = [Aineq1; Aineq2; Aineq3; Aineq4; Aineq5; Aineq6; Aineq7; Aineq8; Aineq9; Aineq10];
-    B = [Bineq1; Bineq2; Bineq3; Bineq4; Bineq5; Bineq6; Bineq7; Bineq8; Bineq9; Bineq10];
-    B_lb = [B1_lb; B2_lb; B3_lb; B4_lb; B5_lb; B6_lb; B7_lb; B8_lb; B9_lb; B10_lb];
-    B_ub = [B1_ub; B2_ub; B3_ub; B4_ub; B5_ub; B6_ub; B7_ub; B8_ub; B9_ub; B10_ub];
+    A = [Aineq1; Aineq2; Aineq3; Aineq4; Aineq5; Aineq6; Aineq8; Aineq9; Aineq10];
+    B = [Bineq1; Bineq2; Bineq3; Bineq4; Bineq5; Bineq6; Bineq8; Bineq9; Bineq10];
+    B_lb = [B1_lb; B2_lb; B3_lb; B4_lb; B5_lb; B6_lb; B8_lb; B9_lb; B10_lb];
+    B_ub = [B1_ub; B2_ub; B3_ub; B4_ub; B5_ub; B6_ub; B8_ub; B9_ub; B10_ub];
     
 %     options = cplexoptimset;
 %     options.Display = 'on';
@@ -250,26 +244,17 @@ function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] 
 %       [], [], [], lb, ub, ctype, [], options);
     % Add to cplex class
     cplex.addRows(B_lb, A, B_ub);
+
     
-    %% 4. WARMSTART
-    %  ============
-%     sln = [0,1537.69285758507,16005.2944927036,0,0,795.968794355287,0,8488.68973915132];
-%     idx = [0, 1, 2, 3, 4, 5, 6, 7];
-%     filename = 'warmstart.mst';
-%     probname = 'elms_lp';
-%     
-%     fcn_write_warmstart(sln, idx, filename, probname)
-%     cplex.readMipStart('warmstart.xml');
-    
-    
-    %% 5. SOLVE
-    %  ========
+    % 3. SOLVE
+    % ========
     tic
     cplex.solve();
     toc
     
-    %% 6. OUTPUT
-    %  =========
+    
+    % 4. OUTPUT
+    % =========
     x = cplex.Solution.x;
     fval = cplex.Solution.objval;
     

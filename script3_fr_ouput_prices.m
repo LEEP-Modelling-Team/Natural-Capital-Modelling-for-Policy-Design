@@ -14,7 +14,7 @@ rng(23112010)
 carbon_price_string = 'scc';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 unscaled_budget = 1e9;
-payment_mechanism = 'fr_es';
+payment_mechanism = 'fr_env';
 
 % Markup
 % ------
@@ -31,7 +31,7 @@ data_path = [data_folder, 'elm_option_results_', carbon_price_string, '.mat'];
 
 % Search Sample
 % -------------
-sample_size = 500; % either 'no' or a number representing the sample size
+sample_size = 5000; % either 'no' or a number representing the sample size
 if sample_size > 1000
     eval(['matfile_name = ''prices_' payment_mechanism '_' num2str(round(sample_size/1000)) 'k_sample.mat'';']);
 else
@@ -113,7 +113,7 @@ for iter = 1:Niter
     
     cplex_options.time = 1800;
     cplex_options.logs = cplex_folder;    
-    [x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
+    [x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
                                                                   
     mfile.prices(iter, 1:num_prices) = prices_milp ./ prices_scale;
     mfile.benefits(iter,1)           = fval_milp;
@@ -129,7 +129,9 @@ sample_size = 'no';  % all data
 % -------------
 data_year = 1;    
 [b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, data_year);
-num_prices = length(price_vars);
+num_prices  = length(price_vars);
+num_options = size(q, 3);
+num_cells   = size(b, 1);
     
 % (b) Scale quantities
 % --------------------
@@ -176,15 +178,16 @@ Ngood = 50;
 % --------------------------  
 prices_lb = min(prices_locopt)' * 0.75;
 prices_ub = max(prices_locopt)' * 1.25;
-
 prices_lb = zeros(size(prices_lb));
+% prices_ub = max(prices_locopt)' * 2;
 
 uptake_locopt = myfun_uptake(prices_locopt(1, :), q, c, elm_options)';
 uptake_locopt = uptake_locopt(:)';
 
-cplex_options.time = 15000;
-cplex_options.logs = cplex_folder;    
-[x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
+cplex_options.time = 65000;
+cplex_options.logs = cplex_folder;   
+    
+[x_milp, prices_milp, fval_milp, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
 prices_milp = prices_milp ./ prices_scale;
 
 % 4. Save Solution
@@ -199,9 +202,9 @@ solution.prices_ub     = prices_ub;
 solution.new2kid       = new2kid;
 
 if strcmp(payment_mechanism, 'fr_env')
-    save('solution_env_out_prices.mat', 'solution');
+    save('solution_fr_env_prices.mat', 'solution');
 elseif strcmp(payment_mechanism, 'fr_es')
-    save('solution_es_out_prices.mat', 'solution');
+    save('solution_fr_es_prices.mat', 'solution');
 else
     error('payment mechanism can only be ''fr_env'' or ''fr_es''')
 end

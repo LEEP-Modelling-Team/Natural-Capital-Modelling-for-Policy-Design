@@ -1,11 +1,13 @@
-% MILP_output_prices
-% ==================
+% MIP_fr_out
+% ==========
 
 %  Purpose
 %  -------
 %  Maximises benefits suject to a budget constraint, by offering flat rate 
-%  prices to farmers for eachoutcome arising from farmer choice over a set 
-%  of possible farm land use change options.
+%  prices to farmers for each outcome arising from farmer choice over a set 
+%  of possible farm land use change options. Outcomes can be for
+%  environmental quantities (fr_env) or for ecosystem service values
+%  (fr_es).
 
 %  Inputs
 %  ------
@@ -17,9 +19,12 @@
 %    warm_start_uptake  [1 x num_farmers*num_options] vector of uptake at warm_start_prices 
 %    prices_lb          [1 x num_env_out] vector of lower bount on prices
 %    prices_ub          [1 x num_env_out] vector of upper bount on prices
-%    cplex_time         seconds to allow cplex to run before terminate
+%    cplex_options      structure with cplex options
+%                         o time: secs to allow cplex to run 
+%                         o logs: folder in which to find warmstarts and
+%                                 write node logs
 
-function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, budget, warm_start_prices, warm_start_uptake, price_lb, price_ub, cplex_options)
+function [x, prices, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, warm_start_prices, warm_start_uptake, prices_lb, prices_ub, cplex_options)
     
     % 1. Initialise
     % =============
@@ -41,47 +46,43 @@ function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, bud
     cplex.Param.mip.tolerances.integrality.Cur = 0;
     cplex.Param.mip.tolerances.mipgap.Cur = 0;
     cplex.Param.timelimit.Cur = cplex_options.time;
-    % cplex.Param.output.clonelog.Cur = cplex_options.logs;
     cplex.Param.workdir.Cur = cplex_options.logs;
+    %  cplex.DisplayFunc = '';    
     
     % 1.2 Constants
     % -------------
-    num_farmers = size(b, 1);
-    num_options = size(b, 2);
+    num_farmers = size(q, 1);
     num_env_out = size(q, 2);
+    num_options = size(q, 3);
+    
+    % 1.3 Reduce to Cells where could have positive surplus given prices
+    % ------------------------------------------------------------------
+    % max_surplus = fcn_find_maxsurplus(q, c, prices_lb, prices_ub);
+    surplus = fcn_find_maxsurplus(q, c, prices_lb, prices_ub);
+    max_surplus = max(surplus, [], 2);
+    
+    drop_cell_ind = (max_surplus < 0);       
+    if any(drop_cell_ind)
+        %  Remove cells where could no possible price would enduce participation
+        b(drop_cell_ind, :)    = [];
+        c(drop_cell_ind, :)    = [];
+        q(drop_cell_ind, :, :) = [];
+        surplus(drop_cell_ind, :)  = [];
+        max_surplus(drop_cell_ind) = [];
+        warm_start_uptake(repelem(drop_cell_ind, num_options, 1)') = [];
+        num_farmers = size(q, 1);
+    end
+    R = repelem(budget*1.01, num_options * num_farmers, 1);
+    S = budget*1.01;
+    
+    % R = repelem(max_surplus+1, num_options, 1);
+    % S = max_surplus+1;
     
     % Store transposed matrices
     bt = b';
-    ct = c';
-
-    % set the parameters for the big-M formulation
-    % 1) q_ef
-    q_ef = max(q, [], 3);
-
-    % 2) R_oe
-    c_of = zeros(num_farmers, num_env_out, num_options);
-    for i = 1:num_options
-        c_of(:,:,i) = repmat(c(:,i), 1, num_env_out);
-    end
-    R_oe = max(c_of .* ~isinf(c_of ./ q), [], 1);
-
-    % 3) Re
-    R_e = max(R_oe, [], 3);
-
-    % 4) Rf
-    R_f = sum(q_ef .* R_e, 2);
+    ct = c';    
     
-    % 5) S
-    S = max(R_f);
-    S = budget;
-    
-    % 6) T
-    T = 1;
-
-    % 7) M
-    M = budget.*10;
-    
-    
+   
     % 2. Choice Variables
     % ===================
     %
@@ -94,9 +95,10 @@ function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, bud
     
     % 3. Bounds for Choice Variables
     % ==============================
-    lb    = [price_lb; sparse(num_farmers + num_options * num_farmers, 1)];
-    ub    = [price_ub; repelem(budget, num_farmers, 1); ones((num_options * num_farmers), 1)];     
-
+    lb    = [prices_lb; sparse(num_farmers + num_options * num_farmers, 1)];
+    ub    = [prices_ub; repelem(budget, num_farmers, 1); ones((num_options*num_farmers), 1)];     
+    % lb    = [sparse(num_env_out + num_farmers + num_options * num_farmers, 1)];
+    % ub    = [repelem(budget, num_env_out + num_farmers, 1); ones((num_options*num_farmers), 1)];     
     
     % 4. Cost vector
     % ==============    
@@ -169,16 +171,16 @@ function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, bud
     %  options give negative utility then u_f = 0 on account of positivity
     %  constraint, in which case all x_of must be zero and no option is
     %  chosen.    
-    R   = budget .* 1.01;
+    % R   = budget .* 1.01;
     A_p = -A_p;   
     A_u = repelem(speye(num_farmers), num_options, 1);
     A_x = num2cell(c,2);
     A_x = repelem(sparse(blkdiag(A_x{:})), num_options, 1);
-    A_x = A_x + R*speye(num_farmers*num_options);
+    A_x = A_x + R.*speye(num_farmers*num_options);
     A   = [A_p, A_u, A_x];
     B   = ones(num_farmers*num_options, 1);
     Bl  = B * -Inf;
-    Bu  = B * R;
+    Bu  = B .* R;
     if ~isempty(A),cplex.addRows(Bl, A, Bu); end    
     clear A_p A_u A_x c_rf A B Bl Bu   
 
@@ -205,28 +207,28 @@ function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, bud
     %
     %    u_f <= S * sum_o(x_of)   (f = 1...N)   (Eq 16)
     %   
-    S   = budget * 1.01;
+    % S   = budget * 1.01;
     A_p = sparse(num_farmers, num_env_out);
     A_u = speye(num_farmers);
-    A_x = -repelem(speye(num_farmers), 1, num_options) * S;
+    A_x = -repelem(speye(num_farmers), 1, num_options) .* S;
     A   = [A_p, A_u, A_x];
     Bl  = ones(num_farmers, 1) * -Inf;
     Bu  = zeros(num_farmers, 1);
     if ~isempty(A),cplex.addRows(Bl, A, Bu); end                
     clear A_p A_u A_x A Bl Bu
 
-    %  Surplus must be > 1 if option chosen
-    %
-    %    u_f >= sum_o(x_of)   (f = 1...N)   (Eq 18)
-    %   
-    A_p = sparse(num_farmers, num_env_out);
-    A_u = -speye(num_farmers);
-    A_x = -repelem(speye(num_farmers), 1, num_options) * S;
-    A   = [A_p, A_u, A_x];
-    Bl  = ones(num_farmers, 1) * -Inf;
-    Bu  = zeros(num_farmers, 1);
-    if ~isempty(A),cplex.addRows(Bl, A, Bu); end    
-    clear A_p A_u A_x A Bl Bu  
+%     %  Surplus must be > 1 if option chosen
+%     %
+%     %    u_f >= sum_o(x_of)   (f = 1...N)   (Eq 18)
+%     %   
+%     A_p = sparse(num_farmers, num_env_out);
+%     A_u = -speye(num_farmers);
+%     A_x = -repelem(speye(num_farmers), 1, num_options);
+%     A   = [A_p, A_u, A_x];
+%     Bl  = ones(num_farmers, 1) * -Inf;
+%     Bu  = zeros(num_farmers, 1);
+%     if ~isempty(A),cplex.addRows(Bl, A, Bu); end    
+%     clear A_p A_u A_x A Bl Bu  
 
 
     % 7. CPLEX call
@@ -234,17 +236,19 @@ function [x, prices, fval, exitflag, exitmsg] =  MILP_output_prices(b, c, q, bud
     
     % 7.1 Warm start
     % --------------
-    sln = [warm_start_prices warm_start_uptake];
-    idx = [1:num_env_out num_env_out+num_farmers+1:num_env_out+num_farmers+num_options*num_farmers];
-    idx = idx - 1;            
-    filename = 'warmstart.mst';
-    probname = 'elms_lp';
-    fcn_write_warmstart(sln', idx', filename, probname);
+    if ~isempty(warm_start_prices)
+        sln = [warm_start_prices warm_start_uptake];
+        idx = [1:num_env_out num_env_out+num_farmers+1:num_env_out+num_farmers+num_options*num_farmers];
+        idx = idx - 1;            
+        filename = 'warmstart.mst';
+        probname = 'elms_lp';
+        fcn_write_warmstart(sln', idx', filename, probname);
+        cplex.readMipStart('warmstart.mst');
+    end
     
     % 7.2 Solve
     % ---------
-    tic
-    cplex.readMipStart('warmstart.mst');
+    tic    
     cplex.solve();
     toc   
     

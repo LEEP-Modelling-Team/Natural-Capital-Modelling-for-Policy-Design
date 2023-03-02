@@ -55,9 +55,12 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
         case 'fr_env'
             vars_price = vars_env_outs;
             quantities = env_outs;
-        case 'fr_act'
+        case {'fr_act', 'fr_act_pctl'}
             vars_price = elm_options;
-            quantities = elm_ha;            
+            quantities = elm_ha;  
+        case 'oc'
+            vars_price = elm_options;
+            quantities = elm_ha;        
     end
     
     if ~isempty(drop_vars)
@@ -66,7 +69,7 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
 
             % Remove from Quantities
             % ----------------------
-            if ~strcmp(payment_mechanism, 'fr_act')
+            if ~any(strcmp(payment_mechanism, {'fr_act', 'fr_act_pctl', 'oc'}))
                 [indvar, idxvar] = ismember(var, vars_price);            
                 if indvar
                     % Remove from var list
@@ -118,9 +121,9 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
     % Use farmer_sample_ind to select farmers to include in price search
     % ------------------------------------------------------------------    
     % Extract relevant rows from above arrays/structures
-    b = benefits_year(farmer_sample_ind, :);
+    b = benefits_year(farmer_sample_ind, :);    
     c = costs_year(farmer_sample_ind, :);
-    c = c .* markup;
+    c = c .* markup;    
     q = [];
     if strcmp(payment_mechanism, 'fr_act')
         q = table2array(struct2table(quantities));
