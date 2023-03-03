@@ -24,7 +24,7 @@
 %                         o logs: folder in which to find warmstarts and
 %                                 write node logs
 
-function [x, prices, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, warm_start_prices, warm_start_uptake, prices_lb, prices_ub, cplex_options)
+function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, warm_start_prices, warm_start_uptake, prices_lb, prices_ub, cplex_options)
     
     % 1. Initialise
     % =============
@@ -256,8 +256,9 @@ function [x, prices, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, war
     % -------------------
     x        = cplex.Solution.x;
     prices   = x(1:num_env_out)';
+    uptake   = round(reshape(x((num_env_out + num_farmers + 1):end), num_options, num_farmers)'); 
     fval     = cplex.Solution.objval; 
     exitflag = cplex.Solution.status;
-    exitmsg   = cplex.Solution.statusstring;
-
+    exitmsg  = cplex.Solution.statusstring;
+    
 end

@@ -55,12 +55,9 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
         case 'fr_env'
             vars_price = vars_env_outs;
             quantities = env_outs;
-        case {'fr_act', 'fr_act_pctl'}
+        case {'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'}
             vars_price = elm_options;
             quantities = elm_ha;  
-        case 'oc'
-            vars_price = elm_options;
-            quantities = elm_ha;        
     end
     
     if ~isempty(drop_vars)
@@ -69,7 +66,7 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
 
             % Remove from Quantities
             % ----------------------
-            if ~any(strcmp(payment_mechanism, {'fr_act', 'fr_act_pctl', 'oc'}))
+            if ~any(strcmp(payment_mechanism, {'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'}))
                 [indvar, idxvar] = ismember(var, vars_price);            
                 if indvar
                     % Remove from var list
@@ -125,7 +122,7 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
     c = costs_year(farmer_sample_ind, :);
     c = c .* markup;    
     q = [];
-    if any(strcmp(payment_mechanism, {'fr_act', 'fr_act_pctl', 'oc'}))
+    if any(strcmp(payment_mechanism, {'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'}))
         q = table2array(struct2table(quantities));
     else
         for k = 1:num_elm_options

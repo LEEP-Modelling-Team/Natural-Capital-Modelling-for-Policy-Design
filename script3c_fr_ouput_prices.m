@@ -11,10 +11,10 @@ rng(23112010)
 
 % Model
 % -----
+payment_mechanism = 'fr_es';
+unscaled_budget = 1e9;
 carbon_price_string = 'scc';
 drop_vars = {'habitat_non_use', 'biodiversity'};
-unscaled_budget = 1e9;
-payment_mechanism = 'fr_env';
 budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
 
 % Markup
@@ -64,7 +64,7 @@ for iter = 1:Niter
     prices_scale = reshape(permute(q, [1 3 2]),[], size(q,2));
     prices_scale(prices_scale==0) = NaN;
     prices_scale = nanstd(prices_scale);
-    q = q ./ repmat(prices_scale, [size(q,1), 1, size(q,3)]);
+    q = q ./ prices_scale;
            
     % (c) Linear search for maximum possible prices
     % ---------------------------------------------
@@ -114,10 +114,10 @@ for iter = 1:Niter
     
     cplex_options.time = 1800;
     cplex_options.logs = cplex_folder;    
-    [x_milp, prices_milp, fval_milp, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
-                                                                  
-    mfile.prices(iter, 1:num_prices) = prices_milp ./ prices_scale;
-    mfile.benefits(iter,1)           = fval_milp;
+    [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
+
+    mfile.prices(iter, 1:num_prices) = prices ./ prices_scale;
+    mfile.benefits(iter,1)           = fval;
         
 end    
     
@@ -130,16 +130,16 @@ sample_size = 'no';  % all data
 % -------------
 data_year = 1;    
 [b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, data_year);
-num_prices  = length(price_vars);
+num_farmers = size(q, 1);
+num_prices  = size(q, 2);
 num_options = size(q, 3);
-num_cells   = size(b, 1);
     
 % (b) Scale quantities
 % --------------------
 prices_scale = reshape(permute(q, [1 3 2]),[], size(q,2));
 prices_scale(prices_scale==0) = NaN;
 prices_scale = nanstd(prices_scale);
-q = q ./ repmat(prices_scale, [size(q,1), 1, size(q,3)]);
+q = q ./ prices_scale;
 
 % (c) Price bounds from sample searches
 % -------------------------------------
@@ -188,17 +188,39 @@ uptake_locopt = uptake_locopt(:)';
 cplex_options.time = 65000;
 cplex_options.logs = cplex_folder;   
     
-[x_milp, prices_milp, fval_milp, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
-prices_milp = prices_milp ./ prices_scale;
+[prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
+
+
+% Process result
+% --------------
+% Rescale 
+prices = prices ./ prices_scale;
+q      = q .* prices_scale;
+
+uptake        = myfun_uptake(prices, q, c, elm_options);
+uptake_ind    = (sum(uptake,2) > 0);
+option_nums   = (1:8)';
+option_choice = (uptake * option_nums);
+benefits      = sum(b.*uptake, 2);
+costs         = sum(c.*uptake, 2);
+pq            = squeeze(sum(q .* prices, 2));
+farm_payment  = sum(pq.*uptake, 2);
 
 % 4. Save Solution
 % ----------------
-solution.x             = x_milp;
-solution.prices        = prices_milp;
-solution.fval          = fval_milp;
-solution.exitflag      = exitflag;
+solution.prices        = prices;
+solution.fval          = sum(benefits);
+solution.spend         = sum(farm_payment);
+solution.uptake        = uptake;
+solution.uptake_ind    = uptake_ind;
+solution.option_choice = option_choice;
+solution.new2kid       = new2kid(uptake_ind);
+solution.farm_costs    = costs;
+solution.farm_benefits = benefits;
+solution.farm_payment  = farm_payment;
 solution.prices_locopt = prices_locopt;
 solution.prices_lb     = prices_lb;
 solution.prices_ub     = prices_ub;
-solution.new2kid       = new2kid;
-save(['solution_' budget_str '_' payment_mechanism '_prices.mat'], 'solution');
+
+save(['solution_' budget_str '_' payment_mechanism '.mat'], 'solution');     
+

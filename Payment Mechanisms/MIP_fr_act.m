@@ -19,7 +19,7 @@
 %                         o logs: folder in which to find warmstarts and
 %                                 write node logs
 
-function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, cplex_options)
+function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, cplex_options)
 
 
     % 1. Initialise
@@ -255,33 +255,13 @@ function [options_uptake, option_choice, best_rate, farm_payment, tot_benefits] 
     
     % 4. OUTPUT
     % =========
-    x = cplex.Solution.x;
-    fval = cplex.Solution.objval;
+    x        = cplex.Solution.x;
+    prices   = x(1:num_options)';
+    uptake   = round(reshape(x((num_options + num_farmers + 1):end), num_options, num_farmers)');
+    fval     = cplex.Solution.objval;
+    exitflag = cplex.Solution.status;
+    exitmsg  = cplex.Solution.statusstring;
     
-    % extract option_uptake matrix
-    options_uptake = round(reshape(x((num_options + num_farmers + 1):end), num_options, num_farmers)');
-    
-    % extract option IDs for farmers taking any options
-    option_choice = zeros(1, num_farmers);
-    for i = 1:num_farmers
-        if sum(options_uptake(i, :), 2) == 0
-            option_choice(i) = 0;
-        else
-            [~, col] = find(options_uptake(i, :));
-            option_choice(i) = col;
-        end
-    end
-    
-    option_choice = option_choice';
-    
-    % Extract flat rates
-    best_rate = x(1:num_options)';
-    
-    % Calculate farm payments
-    farm_payment = sum(options_uptake .* q .* best_rate, 2);
-
-    % Extract total benefits from optimization
-    tot_benefits = -fval;
 end
 
 
