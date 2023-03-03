@@ -34,9 +34,9 @@ data_path = [data_folder, 'elm_option_results_', carbon_price_string, '.mat'];
 % -------------
 sample_size = 5000; % either 'no' or a number representing the sample size
 if sample_size > 1000
-    eval(['matfile_name = ''prices_' payment_mechanism '_' num2str(round(sample_size/1000)) 'k_sample.mat'';']);
+    eval(['matfile_name = ''prices_' budget_str '_' payment_mechanism '_' num2str(round(sample_size/1000)) 'k_sample.mat'';']);
 else
-    eval(['matfile_name = ''prices_' payment_mechanism '_' num2str(round(sample_size)) '_sample.mat'';']);
+    eval(['matfile_name = ''prices_' budget_str '_' payment_mechanism '_' num2str(round(sample_size)) '_sample.mat'';']);
 end
 mfile = matfile(matfile_name, 'Writable', true);
 if ~isfile(matfile_name)
