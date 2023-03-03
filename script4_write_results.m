@@ -191,7 +191,6 @@ for i = 1:numel(payment_mechanisms)
         
     end
 
-
     % Construct results table
     % -----------------------
     results = [cell_id, ...
@@ -215,37 +214,43 @@ for i = 1:numel(payment_mechanisms)
     % Write results table to .csv file 
     writetable(results, [data_folder 'results_' budget_str '_' payment_mechanism '.csv']);   
     
+    
     % (5) Write aggregated/summarised data to spreadsheet
-    %  ===================================================
+    %  ==================================================
     % Set up filename and correct sheet for .xls spreadsheet
     filename = [data_folder 'results_all.xlsx'];
     sheet = [payment_mechanism, '_', budget_str];
-       
-    % (a) Get frequency table of options chosen
-    % -----------------------------------------
-    summary_option = tabulate(results.option_choice);
-    option_choice_tbl = array2table(summary_option, 'VariableNames', {'option_idx', 'count', 'percent'});
-    option_names_tbl  = cell2table(elm_options', 'VariableNames', {'option_name'});
-    height_diff = height(option_choice_tbl) < height(option_names_tbl);
-    if height_diff > 0
-       new_rows = array2table([(height(option_choice_tbl)+1:1:height(option_choice_tbl)+height_diff)' zeros(height_diff, width(option_choice_tbl)-1)], 'VariableNames', option_choice_tbl.Properties.VariableNames);
-       option_choice_tbl = vertcat(option_choice_tbl, new_rows); 
-    end
-    option_tbl = [option_names_tbl option_choice_tbl];
-	writetable(option_tbl, filename, 'Sheet', sheet, 'Range', 'A3');
+
+    % (a) Title
+    % ---------
+    xlswrite(filename, {['Scheme: ' sheet]}, sheet, 'A1');
     
-    % (b) Write flat rates if appropriate
-    % -----------------------------------
+    % (b) Scheme Summary
+    % ------------------
+    xlswrite(filename, {'Outcomes:'}, sheet, 'A4');
+    summary_data = [solution.fval, solution.spend, solution.fval/solution.spend, length(solution.new2kid)];
+    summary_vars = {'es_benefits', 'spend', 'benefit2spend', 'num_cells'};
+    summary_tbl  = array2table(summary_data, 'VariableNames', summary_vars);
+    writetable(summary_tbl, filename, 'Sheet', sheet, 'Range', 'A5');
+        
+    % (c) Prices
+    % ----------
+    xlswrite(filename, {'Prices:'}, sheet, 'A7');
     switch payment_mechanism
         case 'fr_es'
             vars_price = vars_es_outs;
         case 'fr_env'
             vars_price = vars_env_outs;
-        case {'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'}
+        case {'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd'}
             vars_price = elm_options;
+        case {'up_auc'}
+            vars_price = {'es_value'};        
+        case {'oc_pay'}
+            vars_price = [];
     end  
     
-    if any(strcmp(payment_mechanism, {'fr_act', 'fr_act_pct', 'fr_act_shared', 'fr_env', 'fr_es'}))
+    if ~strcmp(payment_mechanism, {'oc_pay'})
+        
         if strcmp(payment_mechanism, {'fr_env'})
             % Convert units of flooding, N and P prices
             % Flooding: cubic metres per second -> litres per second
@@ -259,7 +264,22 @@ for i = 1:numel(payment_mechanisms)
         end
         
         prices_tbl = array2table(solution.prices, 'VariableNames', vars_price);
-        writetable(prices_tbl, filename, 'Sheet', sheet, 'Range', 'E3');       
+        writetable(prices_tbl, filename, 'Sheet', sheet, 'Range', 'A8');       
     end
+        
+    % (d) Option Choice Frequency
+    % ---------------------------
+    xlswrite(filename, {'Option Uptake:'}, sheet, 'A11');
+    summary_option = tabulate(results.option_choice);
+    option_choice_tbl = array2table(summary_option, 'VariableNames', {'option_idx', 'count', 'percent'});
+    option_names_tbl  = cell2table(elm_options', 'VariableNames', {'option_name'});
+    height_diff = height(option_choice_tbl) < height(option_names_tbl);
+    if height_diff > 0
+       new_rows = array2table([(height(option_choice_tbl)+1:1:height(option_choice_tbl)+height_diff)' zeros(height_diff, width(option_choice_tbl)-1)], 'VariableNames', option_choice_tbl.Properties.VariableNames);
+       option_choice_tbl = vertcat(option_choice_tbl, new_rows); 
+    end
+    option_tbl = [option_names_tbl option_choice_tbl];
+	writetable(option_tbl, filename, 'Sheet', sheet, 'Range', 'A12');
+    
     
 end

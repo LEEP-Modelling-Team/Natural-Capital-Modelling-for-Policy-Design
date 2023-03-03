@@ -11,8 +11,8 @@ rng(23112010)
 
 % Model
 % -----
-payment_mechanism = 'fr_es';
-unscaled_budget = 1e9;
+payment_mechanism = 'fr_env';
+unscaled_budget = 2e9;
 carbon_price_string = 'scc';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
@@ -185,7 +185,7 @@ prices_lb = zeros(size(prices_lb));
 uptake_locopt = myfun_uptake(prices_locopt(1, :), q, c, elm_options)';
 uptake_locopt = uptake_locopt(:)';
 
-cplex_options.time = 65000;
+cplex_options.time = 3600;
 cplex_options.logs = cplex_folder;   
     
 [prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
