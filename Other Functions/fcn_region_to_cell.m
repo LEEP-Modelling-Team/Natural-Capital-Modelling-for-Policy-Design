@@ -59,6 +59,8 @@ function cell_info = fcn_region_to_cell(conn, feature_type, id)
         cell_info.new2kid_string = ['(' jsonencode(cell_info.new2kid) ')'];
     end
     cell_info.ncells = size(unique(cell_info.new2kid),1);
+    
+    cell_info.baseline_lcs = fcn_import_baseline_lcs(conn, cell_info);
 
 end
 

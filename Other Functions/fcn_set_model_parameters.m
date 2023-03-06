@@ -22,7 +22,7 @@ function MP = fcn_set_model_parameters(conn, json, server_flag)
 
     % Carbon Prices
     % -------------
-    MP.carbon_price_str = 'scc';  % e.g. 'scc', 'non_trade_low'
+    MP.carbon_price_str = 'non_trade_central';  % e.g. 'scc', 'non_trade_low', 'non_trade_central', 'non_trade_high'
     if strcmp(MP.carbon_price_str,'scc')
         % Read in SCC from:
         %   Technical Support Document: Social Cost of Carbon, Methane, and Nitrous Oxide
@@ -43,7 +43,7 @@ function MP = fcn_set_model_parameters(conn, json, server_flag)
         % convert from dollars to pounds at 2020 exchange rate
         carbon_price = carbon_price/1.2837;    
     else
-        carbon_price = fcn_get_carbon_price(conn, MP.carbon_price);
+        carbon_price = fcn_get_carbon_price(conn, MP.carbon_price_str);
     end
     MP.carbon_price = carbon_price;
 
@@ -105,6 +105,53 @@ function MP = fcn_set_model_parameters(conn, json, server_flag)
     MP.forest_growth_wgt  = 1./(1 + exp(-s*(tser - mu)));    
     
     
+    % Recreation model
+    % ----------------
+    % Assumptions regarding type of site created on 'access' options and
+    % how the ORVal model should treat these with respect to subsitution.
+    MP.visval_type      = 'simultaneous';  % 'simultaneous' or 'independent' valuation wrt to substituion possibilities 
+    MP.site_type_wood   = 'path_new';      %  'park_new' or 'path_new' type of site created
+    MP.site_type_sng    = 'path_new';      %  'park_new' or 'path_new' type of site created      
+    MP.site_area2length = 'diameter';      %  'diameter' or 'perimeter' type of site created  
+
+    
+    % Flooding model
+    % --------------
+	% Include damages from changes in events of different magnitudes:
+	% 'low':    use 10 and 30 year events
+	% 'medium': use 10, 30 and 100 year events
+	% 'high':   use 10, 30, 100 and 1000 year events
+    % MP.assumption_flooding = 'low';			 % low estimate
+    % MP.assumption_flooding = 'medium';			% medium estimate
+    MP.assumption_flooding = 'high';             % high estimate    
+    
+    % Non-use models
+    % --------------
+    % Set proportion of non use values to take
+    MP.non_use_proportion = 0.38;
+    % MP.non_use_proportion = 0.75;
+    % MP.non_use_proportion = 1;
+
+    % Set non-use habitat assumption
+    MP.assumption_areas = 'SDA';
+    % MP.assumption_areas = 'LFA';
+
+    % Set non-use pollination assumptions
+    % WTP
+    MP.assumption_wtp = 'low';
+    % MP.assumption_wtp = 'high';
+
+    % Population
+    MP.assumption_pop = 'low';
+    % MP.assumption_pop = 'high';
+
+
+    % Biodiversity models
+    % -------------------
+    MP.biodiversity_unit_value = 0;			% turn biodiversity benefits off
+    % MP.biodiversity_unit_value = 500;
+    
+        
     % Food Imports co2
     % ----------------
     %  Factors to translate farm yields/stocks to quantities of food

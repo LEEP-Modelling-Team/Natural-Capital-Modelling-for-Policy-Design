@@ -23,9 +23,13 @@ function rec_all_options = fcn_run_recreation_all_options(MP, new2kid, arable_ha
 
     % Set up parameters for fcn_run_recreation_substitution
     % -----------------------------------------------------
-    visval_type = 'simultaneous';   % simultaneous calculation NOT independent
-    minsitesize = 10;               % minimum site size for new recreation area (hectares)
-
+    minsitesize = 10;                       % minimum site size for new recreation area (hectares)
+    visval_type      = MP.visval_type;      % 'simultaneous' or 'independent' valuation wrt to substituion possibilities 
+    site_type_wood   = MP.site_type_wood;   % 'park_new' or 'path_new' type of site created
+    site_type_sng    = MP.site_type_sng;    % 'park_new' or 'path_new' type of site created      
+    site_area2length = MP.site_area2length; % 'diameter' or 'perimeter' type of site created  
+    
+    
     % 2.  Run recreation models under different scenarios
     % ---------------------------------------------------
     % Uses fcn_run_recreation_substitution to take account of
@@ -35,13 +39,13 @@ function rec_all_options = fcn_run_recreation_all_options(MP, new2kid, arable_ha
 
     % (a) Arable to woodland, farm grass to woodland (individual)
     % -----------------------------------------------------------
-    [rec_wood, ~] = fcn_run_recreation_substitution(MP.rec_data_folder, [arable_rec; grass_rec], dummy_rec, visval_type, minsitesize);
+    [rec_wood, ~] = fcn_run_recreation_substitution(MP.rec_data_folder, [arable_rec; grass_rec], dummy_rec, site_type_wood, site_type_sng, site_area2length, visval_type, minsitesize);
     rec_arable_to_wood = rec_wood(1:N, :);
     rec_grass_to_wood  = rec_wood((N + 1):end, :);
 
     % (b) Arable to semi-natural, farm grass to semi-natural (individual)
     % -------------------------------------------------------------------
-    [~, rec_sng] = fcn_run_recreation_substitution(MP.rec_data_folder, dummy_rec, [arable_rec; grass_rec], visval_type, minsitesize);
+    [~, rec_sng] = fcn_run_recreation_substitution(MP.rec_data_folder, dummy_rec, [arable_rec; grass_rec], site_type_wood, site_type_sng, site_area2length, visval_type, minsitesize);
     rec_arable_to_sng = rec_sng(1:N, :);
     rec_grass_to_sng  = rec_sng((N + 1):end, :);
 
@@ -50,7 +54,7 @@ function rec_all_options = fcn_run_recreation_all_options(MP, new2kid, arable_ha
 
     % Variable names for table
     % ------------------------
-    rec_var_names = {'new2kid', 'rec_val', 'rec_vis'};
+    rec_var_names = {'new2kid', 'rec_val', 'rec_vis', 'rec_viscar'};
 
     % Store results for each individual ELM option in table
     % -----------------------------------------------------

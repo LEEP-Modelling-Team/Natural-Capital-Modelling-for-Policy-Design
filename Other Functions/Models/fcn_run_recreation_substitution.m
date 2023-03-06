@@ -1,4 +1,4 @@
-function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, wood_data, sng_data, visval_type, min_site_size)
+function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, wood_data, sng_data, site_type_wood, site_type_sng, site_area2length, visval_type, min_site_size)
 
     % 1. Data Preparation
     % -------------------
@@ -10,20 +10,46 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
     % 1.b Calculate number of wood and sng cells
     % ------------------------------------------
     nwood = size(wood_data, 1);
-    nsng = size(sng_data, 1);
+    nsng  = size(sng_data, 1);
 
     % 1.c Input sites below min site size
     % -----------------------------------
     wood_below_min_area_ind = (wood_data(:,2) < min_site_size);
     sng_below_min_area_ind  = (sng_data(:,2)  < min_site_size);
 
-    % 1.d SNG area to path area
-    % -------------------------
-    % Calculate path length in m as perimeter of circle with this site area (maximum length 10km)
-    pathlen  = min(2*pi*sqrt(sng_data(:,2)*10000/pi), 10000);
-    % Assume 1.5 grid cells width and multiply by area of grid cell, ignore distance decay
-    patharea = 1.5 * (pathlen/25) * 0.0625;
-    sng_data = [sng_data(:,1) patharea];
+    % 1.d Area to path area
+    % ---------------------
+    if strcmp(site_type_wood, 'path_new')    
+        if strcmp(site_area2length, 'diameter')
+            % Diameter: Path length in m as diameter of circle with this site area (maximum length 10km)
+            pathlen  = min(2*sqrt(wood_data(:,2)*10000/pi), 10000);
+        else
+            % Perimeter: Path length in m as perimeter of circle with this site area (maximum length 10km)
+            pathlen  = min(2*pi*sqrt(wood_data(:,2)*10000/pi), 10000);        
+        end
+        % Divide into grid cells of 25m and distance decay
+        pathlen_grid  = floor(pathlen/25);
+        pathlen_grid  = pathlen_grid  - (25/10000)*pathlen_grid.*(pathlen_grid+1)/2;
+        % Assume 1.5 grid cells width and multiply by area of grid cell
+        patharea = pathlen_grid * 1.5 * 0.0625;
+        wood_data = [wood_data(:,1) patharea];                        
+    end
+    
+    if strcmp(site_type_sng, 'path_new')        
+        if strcmp(site_area2length, 'diameter')
+            % Diameter: Path length in m as diameter of circle with this site area (maximum length 10km)
+            pathlen  = min(2*sqrt(sng_data(:,2)*10000/pi), 10000);
+        else
+            % Perimeter: Path length in m as perimeter of circle with this site area (maximum length 10km)
+            pathlen  = min(2*pi*sqrt(sng_data(:,2)*10000/pi), 10000);        
+        end
+        % Divide into grid cells of 25m and distance decay
+        pathlen_grid  = floor(pathlen/25);
+        pathlen_grid  = pathlen_grid  - (25/10000)*pathlen_grid.*(pathlen_grid+1)/2;
+        % Assume 1.5 grid cells width and multiply by area of grid cell
+        patharea = pathlen_grid * 1.5 * 0.0625;
+        sng_data = [sng_data(:,1) patharea];                        
+    end
 
     
     % 2. v1 base for each new site
@@ -32,15 +58,30 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
     [~, wood_cell_idx] = ismember(wood_data(:,1), NEVO_cell_v1dg.new2kid);
     [~, sng_cell_idx]  = ismember(sng_data(:,1),  NEVO_cell_v1dg.new2kid);
 
-    wood_v1 = NEVO_cell_v1dg.v1dg_park(wood_cell_idx) + log(wood_data(:,2)) * bLCWOODS  + bCWOODS;
-    sng_v1  = NEVO_cell_v1dg.v1dg_path(sng_cell_idx)  + log(sng_data(:,2))  * bPLCNGRAS + bPCNGRASS; 
-
-
+    switch site_type_wood
+        case 'park_new'
+            wood_v1 = NEVO_cell_v1dg.v1dg_park(wood_cell_idx) + log(wood_data(:,2)) * bLCWOODS  + bCWOODS;
+        case 'path_new'
+            wood_v1 = NEVO_cell_v1dg.v1dg_path(wood_cell_idx) + log(wood_data(:,2)) * bPLCWOODS + bPCWOODS;  
+        otherwise
+            error('Recreation area type for woodland not known')
+    end
+    switch site_type_sng
+        case 'park_new'
+            sng_v1 = NEVO_cell_v1dg.v1dg_park(sng_cell_idx) + log(sng_data(:,2)) * bLCNGRASS + bCNGRASS;
+        case 'path_new'
+            sng_v1 = NEVO_cell_v1dg.v1dg_path(sng_cell_idx) + log(sng_data(:,2)) * bPLCNGRAS + bPCNGRASS;  
+        otherwise
+            error('Recreation area type for sng not known')
+    end
+    
     % 3. v1 with tc for each new site to each max lsoa
     % ------------------------------------------------
     % v1 + tc for each of max lsoa
     wood_v1wlk = wood_v1 + v1tcwlk(wood_cell_idx,:);
     wood_v1car = wood_v1 + v1tccar(wood_cell_idx,:);
+    % reshape to vector: nsloa v1s calculated for each site and vector
+    % order is in chuncks of 50
     wood_v1wlk = reshape(wood_v1wlk',[nwood*nlsoasave, 1]); 
     wood_v1car = reshape(wood_v1car',[nwood*nlsoasave, 1]); 
 
@@ -65,6 +106,8 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
     sng_aexpv1car(:,14) = 0;
 
     % set aexpv1 to zero where too small for new recreation area
+    wood_below_min_area_ind = repelem(wood_below_min_area_ind, nlsoasave, 1);
+    sng_below_min_area_ind  = repelem(sng_below_min_area_ind, nlsoasave, 1);
     wood_aexpv1wlk(wood_below_min_area_ind,:) = 0;
     wood_aexpv1car(wood_below_min_area_ind,:) = 0;
     sng_aexpv1wlk(sng_below_min_area_ind,:)   = 0;
@@ -207,14 +250,16 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
 
     % a. Aggregate Visits & Values
     % ----------------------------
-    val = sum(val, 2);
-    vis = sum(viscar + viswlk, 2);
+    val    = sum(val, 2);
+    vis    = sum(viscar + viswlk, 2);
+    viscar = sum(viscar, 2);
     fprintf(['%s\n  new visits: ' sprintf('%s', num2sepstr(sum(vis),  '%.0f')) ' \n  value:      ' sprintf('%s', num2sepstr(sum(val),  '%.0f')) ' \n'], visval_type);
 
     % b. Aggregate back to site/cell
     % ------------------------------
-    val = reshape(val',[nlsoasave,nwood+nsng])';
-    vis = reshape(vis',[nlsoasave,nwood+nsng])';
+    val    = reshape(val',[nlsoasave,nwood+nsng])';
+    vis    = reshape(vis',[nlsoasave,nwood+nsng])';
+    viscar = reshape(viscar',[nlsoasave,nwood+nsng])';
 
     val_wood = sum(val(1:nwood,:),2);
     val_sng  = sum(val(nwood+1:nwood+nsng,:),2);
@@ -222,7 +267,10 @@ function [rec_wood, rec_sng] = fcn_run_recreation_substitution(rec_data_folder, 
     vis_wood = sum(vis(1:nwood,:),2);
     vis_sng  = sum(vis(nwood+1:nwood+nsng,:),2);
     
-    rec_wood = [val_wood, vis_wood];
-    rec_sng  = [val_sng,  vis_sng];
+    viscar_wood = sum(viscar(1:nwood,:),2);
+    viscar_sng  = sum(viscar(nwood+1:nwood+nsng,:),2);
+    
+    rec_wood = [val_wood, vis_wood, viscar_wood];
+    rec_sng  = [val_sng,  vis_sng,  viscar_sng];
 
 end

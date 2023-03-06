@@ -13,14 +13,14 @@ function [water_transfer_results, water_transfer_cell2subctch, nfm_data] = fcn_i
     load([NEV.water_runs_folder 'water_grass2sng.mat'],   'water_grass2sng')
     load([NEV.water_runs_folder 'water_grass2wood.mat'],  'water_grass2wood')
     
-    water_transfer_results.arable_reversion_sng_access = water_arable2sng;
-    water_transfer_results.arable_reversion_sng_noaccess = water_arable2sng;
-    water_transfer_results.arable_reversion_wood_access = water_arable2wood;
+    water_transfer_results.arable_reversion_sng_access    = water_arable2sng;
+    water_transfer_results.arable_reversion_sng_noaccess  = water_arable2sng;
+    water_transfer_results.arable_reversion_wood_access   = water_arable2wood;
     water_transfer_results.arable_reversion_wood_noaccess = water_arable2wood;
-    water_transfer_results.destocking_sng_access = water_grass2sng;
-    water_transfer_results.destocking_sng_noaccess = water_grass2sng;
-    water_transfer_results.destocking_wood_access = water_grass2wood;
-    water_transfer_results.destocking_wood_noaccess = water_grass2wood;
+    water_transfer_results.destocking_sng_access          = water_grass2sng;
+    water_transfer_results.destocking_sng_noaccess        = water_grass2sng;
+    water_transfer_results.destocking_wood_access         = water_grass2wood;
+    water_transfer_results.destocking_wood_noaccess       = water_grass2wood;
     
     % (b) Cell to subcatchment lookup from database
     % ---------------------------------------------

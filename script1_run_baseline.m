@@ -40,10 +40,9 @@ addpath(genpath(MP.NEV_code_folder))
 % Returns cell ids and other info
 cell_info = fcn_region_to_cell(conn, MP.feature_type, MP.id);
 
-% Import baseline landcovers from database
-% ----------------------------------------
-% Set this to baseline_lcs_original
-baseline_lcs = fcn_import_primary_variables(conn, cell_info);
+% Baseline landcovers
+% -------------------
+baseline_lcs = cell_info.baseline_lcs;
 
 
 % (2) Run agriculture, forestry and GHG models
@@ -256,5 +255,5 @@ baseline.es_biodiversity_ucl = es_biodiversity_ucl;
 % (4) Save baseline results to .mat file
 % ======================================
 % Depends on what carbon price has been used
-save([MP.data_out 'baseline_results_', MP.carbon_price_str, '.mat'], 'baseline');
+save([MP.data_out 'model_runs_baseline_', MP.carbon_price_str, '.mat'], 'baseline');
 

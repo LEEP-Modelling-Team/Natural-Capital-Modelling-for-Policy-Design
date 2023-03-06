@@ -9,8 +9,10 @@ rng(23112010)
 % Model
 % -----
 payment_mechanisms = {'fr_env', 'fr_es', 'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'};
+payment_mechanisms = {'fr_act', 'oc_pay'};
 unscaled_budget = 1e9;
-carbon_price_string = 'scc';
+urban_pct_limit = 0.5;
+carbon_price_string = 'non_trade_central';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
 scheme_year = 1;
@@ -22,7 +24,7 @@ markup = 1.15;
 % Paths to Data & Cplex Working Dir
 % ---------------------------------
 data_folder  = 'D:\myGitHub\defra-elms\Data\';
-data_path = [data_folder, 'elm_option_results_', carbon_price_string, '.mat'];
+data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
 
 
 % 2. Initialise
@@ -34,25 +36,34 @@ data_path = [data_folder, 'elm_option_results_', carbon_price_string, '.mat'];
 % Depends on carbon price
 load(data_path);
 
-% Remove Dodgy Data
-% -----------------
-dodgy_data_ind = round(costs.arable_reversion_sng_access(:,1),2)==534.31;
-% cells
-cell_info.new2kid  = cell_info.new2kid(~dodgy_data_ind);
+% Remove cells 
+% ------------
+% Cells that are majority urban (excluding water area)
+cell_remove_ind = (cell_info.baseline_lcs.urban_ha./(cell_info.baseline_lcs.wood_ha + cell_info.baseline_lcs.farm_ha + cell_info.baseline_lcs.sngrass_ha + cell_info.baseline_lcs.urban_ha) ...
+                        > urban_pct_limit); 
+
+% Cells where no farm land
+cell_remove_ind = or(cell_remove_ind, (cell_info.baseline_lcs.farm_ha < 1)); 
+
+% Cells where no land cost
+cell_remove_ind = or(cell_remove_ind, (costs.arable_reversion_sng_noaccess(:,1) + costs.destocking_sng_noaccess(:,1) == 0)); 
+
+% Remove Cells
+cell_info.new2kid  = cell_info.new2kid(~cell_remove_ind);
 cell_info.ncells   = length(cell_info.new2kid);
 % benefits
 for k = 1:length(elm_options)
     elm_option_k = elm_options{k};
-    benefits.(elm_option_k)             = benefits.(elm_option_k)(~dodgy_data_ind,:);
-    benefits_table.(elm_option_k)       = benefits_table.(elm_option_k)(~dodgy_data_ind,:,:);
-    benefit_cost_ratios.(elm_option_k)  = benefit_cost_ratios.(elm_option_k)(~dodgy_data_ind,:);
-    costs.(elm_option_k)                = costs.(elm_option_k)(~dodgy_data_ind,:);
-    costs_table.(elm_option_k)          = costs_table.(elm_option_k)(~dodgy_data_ind,:,:);
-    es_outs.(elm_option_k)              = es_outs.(elm_option_k)(~dodgy_data_ind,:,:);
-    env_outs.(elm_option_k)             = env_outs.(elm_option_k)(~dodgy_data_ind,:,:);
-    elm_ha.(elm_option_k)               = elm_ha.(elm_option_k)(~dodgy_data_ind);
+    benefits.(elm_option_k)             = benefits.(elm_option_k)(~cell_remove_ind,:);
+    benefits_table.(elm_option_k)       = benefits_table.(elm_option_k)(~cell_remove_ind,:,:);
+    benefit_cost_ratios.(elm_option_k)  = benefit_cost_ratios.(elm_option_k)(~cell_remove_ind,:);
+    costs.(elm_option_k)                = costs.(elm_option_k)(~cell_remove_ind,:);
+    costs_table.(elm_option_k)          = costs_table.(elm_option_k)(~cell_remove_ind,:,:);
+    es_outs.(elm_option_k)              = es_outs.(elm_option_k)(~cell_remove_ind,:,:);
+    env_outs.(elm_option_k)             = env_outs.(elm_option_k)(~cell_remove_ind,:,:);
+    elm_ha.(elm_option_k)               = elm_ha.(elm_option_k)(~cell_remove_ind);
 end    
-
+    
 
 % Remove vars in 'drop_vars'
 % --------------------------
@@ -269,7 +280,8 @@ for i = 1:numel(payment_mechanisms)
         
     % (d) Option Choice Frequency
     % ---------------------------
-    xlswrite(filename, {'Option Uptake:'}, sheet, 'A11');
+    cellnum = 11;
+    xlswrite(filename, {'Option Uptake:'}, sheet, ['A' num2str(cellnum)]);
     summary_option = tabulate(results.option_choice);
     option_choice_tbl = array2table(summary_option, 'VariableNames', {'option_idx', 'count', 'percent'});
     option_names_tbl  = cell2table(elm_options', 'VariableNames', {'option_name'});
@@ -279,7 +291,64 @@ for i = 1:numel(payment_mechanisms)
        option_choice_tbl = vertcat(option_choice_tbl, new_rows); 
     end
     option_tbl = [option_names_tbl option_choice_tbl];
-	writetable(option_tbl, filename, 'Sheet', sheet, 'Range', 'A12');
+    cellnum = cellnum + 1;
+	writetable(option_tbl, filename, 'Sheet', sheet, 'Range', ['A' num2str(cellnum)]);
+    
+    % (e) Costs
+    % ---------
+    cellnum = cellnum + 11;    
+    xlswrite(filename, {'Costs by Option:'}, sheet, ['A' num2str(cellnum)]);
+    costs_out_tbl = horzcat(option_choice, costs_npv_table);
+    costs_out_tbl = grpstats(costs_out_tbl(solution.uptake_ind>0,:), 'option_choice', 'sum');
+    col_sums      = array2table(sum(table2array(costs_out_tbl)),'VariableNames', costs_out_tbl.Properties.VariableNames);
+    col_sums.option_choice = 0;
+    costs_out_tbl = horzcat(cell2table(elm_options(costs_out_tbl.option_choice)', 'VariableNames', {'option_name'}), costs_out_tbl);
+    col_sums      = horzcat(cell2table({'total'}, 'VariableNames', {'option_name'}), col_sums);
+    costs_out_tbl = vertcat(costs_out_tbl, col_sums);
+    cellnum = cellnum + 1;    
+    writetable(costs_out_tbl, filename, 'Sheet', sheet, 'Range', ['A' num2str(cellnum)]);
+
+    % (f) Benefits
+    % ------------
+    cellnum = cellnum + 11;        
+    xlswrite(filename, {'Benefits by Option:'}, sheet, ['A' num2str(cellnum)]);
+    benefits_out_tbl = horzcat(option_choice, benefits_npv_table);
+    benefits_out_tbl = grpstats(benefits_out_tbl(solution.uptake_ind>0,:), 'option_choice', 'sum');
+    col_sums         = array2table(sum(table2array(benefits_out_tbl)),'VariableNames', benefits_out_tbl.Properties.VariableNames);
+    col_sums.option_choice = 0;
+    benefits_out_tbl = horzcat(cell2table(elm_options(benefits_out_tbl.option_choice)', 'VariableNames', {'option_name'}), benefits_out_tbl);
+    col_sums         = horzcat(cell2table({'total'}, 'VariableNames', {'option_name'}), col_sums);
+    benefits_out_tbl = vertcat(benefits_out_tbl, col_sums);
+    cellnum = cellnum + 1;    
+    writetable(benefits_out_tbl, filename, 'Sheet', sheet, 'Range', ['A' num2str(cellnum)]);    
+  
+    % (g) ES_Outcomes
+    % ---------------
+    cellnum = cellnum + 11;    
+    xlswrite(filename, {'Ecosystem Services by Option:'}, sheet, ['A' num2str(cellnum)]);
+    es_out_tbl = horzcat(option_choice, es_outcomes_table);
+    es_out_tbl = grpstats(es_out_tbl(solution.uptake_ind>0,:), 'option_choice', 'sum');
+    col_sums   = array2table(sum(table2array(es_out_tbl)),'VariableNames', es_out_tbl.Properties.VariableNames);
+    col_sums.option_choice = 0;
+    es_out_tbl = horzcat(cell2table(elm_options(es_out_tbl.option_choice)', 'VariableNames', {'option_name'}), es_out_tbl);
+    col_sums   = horzcat(cell2table({'total'}, 'VariableNames', {'option_name'}), col_sums);
+    es_out_tbl = vertcat(es_out_tbl, col_sums);
+    cellnum = cellnum + 1;    
+    writetable(es_out_tbl, filename, 'Sheet', sheet, 'Range', ['A' num2str(cellnum)]);       
+    
+    % (h) Env_Outcomes
+    % ----------------
+    cellnum = cellnum + 11;        
+    xlswrite(filename, {'Environmental Outcomes by Option:'}, sheet, ['A' num2str(cellnum)]);
+    env_out_tbl = horzcat(option_choice, env_outcomes_table);
+    env_out_tbl = grpstats(env_out_tbl(solution.uptake_ind>0,:), 'option_choice', 'sum');
+    col_sums   = array2table(sum(table2array(env_out_tbl)),'VariableNames', env_out_tbl.Properties.VariableNames);
+    col_sums.option_choice = 0;
+    env_out_tbl = horzcat(cell2table(elm_options(env_out_tbl.option_choice)', 'VariableNames', {'option_name'}), env_out_tbl);
+    col_sums   = horzcat(cell2table({'total'}, 'VariableNames', {'option_name'}), col_sums);
+    env_out_tbl = vertcat(env_out_tbl, col_sums);
+    cellnum = cellnum + 1;    
+    writetable(env_out_tbl, filename, 'Sheet', sheet, 'Range', ['A' num2str(cellnum)]);       
     
     
 end

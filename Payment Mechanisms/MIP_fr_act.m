@@ -190,8 +190,8 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
     Aineq6 = [Aineq6_p, Aineq6_u, Aineq6_d];
 
     Bineq6 = budget;
-    B6_lb = 0;
-    B6_ub = budget;
+    B6_lb = budget;
+    B6_ub = budget + 10000;
     
     clear Aineq6_p Aineq6_u Aineq6_d
 

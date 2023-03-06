@@ -1,4 +1,4 @@
-function PV = fcn_import_primary_variables(conn, cell_info)
+function baseline_lcs = fcn_import_baseline_lcs(conn, cell_info)
 
     % Import all necessary variables for NEVO models, save in PV structure
     sqlquery = ['SELECT new2kid, x, y, wood_ha, farm_ha, sngrass_ha, ' ...
@@ -9,6 +9,6 @@ function PV = fcn_import_primary_variables(conn, cell_info)
                 'ORDER BY new2kid'];
     setdbprefs('DataReturnFormat','structure');
     dataReturn  = fetch(exec(conn,sqlquery));
-    PV = dataReturn.Data;
+    baseline_lcs = dataReturn.Data;
 
 end

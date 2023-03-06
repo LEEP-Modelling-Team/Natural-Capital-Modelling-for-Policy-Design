@@ -5,7 +5,7 @@
 % Save as elm_option_results.mat file
 clear
 
-    
+tic    
 % 1. Set up
 % ----------
 
@@ -18,17 +18,16 @@ conn = fcn_connect_database(server_flag);
 % ------------------------
 json = ['{"id": "E92000001",'...
         '"feature_type": "integrated_countries",' ...
-        '"run_agriculture": true,' ...
-        '"run_forestry": true,' ...
-        '"run_recreation": true,' ...
-        '"run_ghg": true,' ...
-        '"run_biodiversity_jncc": true,' ...
-        '"run_biodiversity_ucl": true,' ...
-        '"run_water": true,' ...
-        '"run_pollination": true,' ...
-        '"run_non_use_pollination": true,' ...
-        '"run_non_use_habitat": true,' ...
-        '"water": null}'];
+        '"run_lcs": false,' ...
+        '"run_agriculture": false,' ...
+        '"run_forestry": false,' ...
+        '"run_recreation": false,' ...
+        '"run_biodiversity_jncc": false,' ...
+        '"run_biodiversity_ucl": false,' ...
+        '"run_water": false,' ...
+        '"run_pollination": false,' ...
+        '"run_non_use_pollination": false,' ...
+        '"run_non_use_habitat": false}'];
 % Decode JSON object/string & set other default parameters
 MP = fcn_set_model_parameters(conn, json, server_flag);
 
@@ -36,57 +35,19 @@ MP = fcn_set_model_parameters(conn, json, server_flag);
 % ------------------------
 addpath(genpath(MP.NEV_code_folder))
 
-% 1.4 Initialise Constants
-% ------------------------
-% Set proportion of non use values to take
-% non_use_proportion = 1e-4;
-non_use_proportion = 0.38;
-% non_use_proportion = 0.75;
-% non_use_proportion = 1;
-
-% Set flooding assumption
-assumption_flooding = 'low';				% low estimate
-% assumption_flooding = 'medium';			% medium estimate
-% assumption_flooding = 'high';             % high estimate
-
-% Set non-use habitat assumption
-assumption_areas = 'SDA';
-% assumption_areas = 'LFA';
-
-% Set non-use pollination assumptions
-% WTP
-assumption_wtp = 'low';
-% assumption_wtp = 'high';
-
-% Population
-assumption_pop = 'low';
-% assumption_pop = 'high';
-
-% Set recreation assumption
-
-% Set biodiversity value
-biodiversity_unit_value = 0;			% turn biodiversity benefits off
-% biodiversity_unit_value = 500;
-
-% 1.5 Go from regional scale to 2km grid cells
+% 1.4 Go from regional scale to 2km grid cells
 % --------------------------------------------
 % Returns cell ids and other info
 cell_info = fcn_region_to_cell(conn, MP.feature_type, MP.id);
 
-% 1.6 Load baseline results from .mat file
+% 1.5 Load baseline results from .mat file
 % ----------------------------------------
 % Created in script1_run_baseline.m script
 % Depends on what carbon price has been used
 % Used to calculate benefit under each ELM option scenario
-data_path = [MP.data_out, 'baseline_results_', MP.carbon_price_str, '.mat'];
-load(data_path);
+baseline_structure_file = [MP.data_out, 'model_runs_baseline_', MP.carbon_price_str, '.mat'];
+load(baseline_structure_file);
 baseline_lcs = baseline.baseline_lcs;
-
-% 1.7 Load water results and related information
-% ----------------------------------------------
-% Water transfer results, including water quality, non-use and flooding
-% (created running scripts 1 to 6 in Water_Runs)
-[water_transfer_results, water_transfer_cell2subctch, nfm_data] = fcn_import_water_transfer_info(conn, MP);
 
 
 %  2. ELM options
@@ -107,7 +68,6 @@ num_elm_options = length(elm_options);
 
 % 2.2. Define number of benefits in simulation
 % --------------------------------------------
-% !!! biodiversity must be final column for combos to work !!!
 % Timber is a private benefit so is taken as a negative cost
 vars_benefits = {'ghg_farm', ...
                  'ghg_dispfood', ...
@@ -118,6 +78,7 @@ vars_benefits = {'ghg_farm', ...
                  'totn', ...
                  'totp', ...
                  'water_non_use', ...
+                 'water_rec', ...
                  'pollination_yield', ...
                  'pollination_non_use', ...
                  'habitat_non_use', ...
@@ -134,10 +95,6 @@ num_costs  = length(vars_costs);
 
 % 2.4 Define number of environmental and ecosystem service outcomes
 % -----------------------------------------------------------------
-% Calculated in fcn_calc_outcomes, assumed to be in order
-% env_outs: GHG, rec grass access, rec wood access, rec grass no access, rec wood no access, flood, tot n, tot p, pollinator species, biodiversity
-% es_outs: GHG val, rec val, flood val, totn val, totp val, water non-use val, pollination val, non use pollination val, non use habitat, biodiversity val
-% !!! biodiversity must be final column for combos to work !!!
 vars_env_outs = {'ghg', ...
                  'sng_rec', ...
                  'wood_rec', ...
@@ -156,6 +113,7 @@ vars_es_outs  = {'ghg', ...
                  'tot_n', ...
                  'tot_p', ...
                  'water_non_use' ...
+                 'water_rec' ...
                  'poll_yield', ...
                  'poll_non_use', ...
                  'habitat_non_use', ...
@@ -173,84 +131,95 @@ vars_grass_food = {'livestock', 'dairy', 'beef', 'sheep'};
 scheme_years = 1:5;
 num_scheme_years = length(scheme_years);
 
-% 2.7 Preallocate structures and arrays to store results
-% ------------------------------------------------------
-for option_i = 1:num_elm_options
-    elm_option                       = elm_options{option_i};                                   % ELM option string, to create field names
-    elm_ha.(elm_option)              = nan(cell_info.ncells, 1);                                % hectares used to implement ELM option
-    benefits.(elm_option)            = nan(cell_info.ncells, num_scheme_years);                 % total benefits
-    benefits_table.(elm_option)      = nan(cell_info.ncells, num_benefits, num_scheme_years); % benefits (see above)
-    costs.(elm_option)               = nan(cell_info.ncells, num_scheme_years);                 % total costs
-    costs_table.(elm_option)         = nan(cell_info.ncells, num_costs, num_scheme_years);    % costs (see above)
-    benefit_cost_ratios.(elm_option) = nan(cell_info.ncells, num_scheme_years);                 % benefit:cost ratio
-    env_outs.(elm_option)            = nan(cell_info.ncells, num_env_outs, num_scheme_years);   % environmental outcomes (see above)
-    es_outs.(elm_option)             = nan(cell_info.ncells, num_es_outs, num_scheme_years);    % ecosystem service outcomes (see above)
-end
-
 
 % 3. NEV Model Runs Under Each Option
 % -----------------------------------
+% Load existing elm_model_runs structure
+elms_data_matfile_filename = [MP.data_out, 'model_runs_elm_', MP.carbon_price_str, '.mat'];
+if exist(elms_data_matfile_filename, 'file') == 2
+    load(elms_data_matfile_filename);
+end
+% Open matfile on disk to overwrite with new model runs
+elms_data_matfile = matfile(elms_data_matfile_filename, 'Writable', true);
 
-% 3.1 Landcovers, Agriculture & Forestry
-% --------------------------------------
-for option_i = 1:num_elm_options
     
-    elm_option = elm_options{option_i};
+% 3.1 Landcovers
+% --------------
+if MP.run_lcs
+    
+    clear elm_ha option_lcs_all land_type_ha
 
-    % 3.1.1 Option Land Covers
-    % ------------------------
-    option_lcs = baseline_lcs;
-    
-    % Area of land into option: Since baseline_lcs rescalsed to keep
-    % arable_ha and grass_ha constant at first decade averages, taking 
-    % Year 1 data is same as anoth other.
-    
-    % Land Use From
-    % -------------
-    if contains(elm_option, 'arable')
-        % Arable
-        % ------
-        elm_option_ha = option_lcs.arable_ha(:,1); 
-        for i = 1:length(vars_arable) 
-            eval(['option_lcs.' vars_arable{i} '_ha = zeros(size(baseline_lcs.' vars_arable{i} '_ha));']);
-            for t = 20:10:50
-                eval(['option_lcs.' vars_arable{i} '_ha_' num2str(t) ' = zeros(size(baseline_lcs.' vars_arable{i} '_ha_' num2str(t) '));']);
+    for option_i = 1:num_elm_options
+
+        elm_option = elm_options{option_i};
+
+        % 3.1.1 Option Land Covers
+        % ------------------------
+        option_lcs = baseline_lcs;
+
+        % Area of land into option: Since baseline_lcs rescaled to keep
+        % arable_ha and grass_ha constant at first decade averages, taking 
+        % Year 1 data is same as any other.
+
+        % Land Use From
+        % -------------
+        if contains(elm_option, 'arable')
+            % Arable
+            % ------
+            elm_option_ha = option_lcs.arable_ha(:,1); 
+            for i = 1:length(vars_arable) 
+                eval(['option_lcs.' vars_arable{i} '_ha = zeros(size(baseline_lcs.' vars_arable{i} '_ha));']);
+                for t = 20:10:50
+                    eval(['option_lcs.' vars_arable{i} '_ha_' num2str(t) ' = zeros(size(baseline_lcs.' vars_arable{i} '_ha_' num2str(t) '));']);
+                end
+            end
+        else
+            % Grass
+            % -----
+            elm_option_ha = option_lcs.grass_ha(:,1);
+            for i = 1:length(vars_grass_ha) 
+                eval(['option_lcs.' vars_grass_ha{i} '_ha = zeros(size(baseline_lcs.' vars_grass_ha{i} '_ha));']);
+                for t = 20:10:50
+                    eval(['option_lcs.' vars_grass_ha{i} '_ha_' num2str(t) ' = zeros(size(baseline_lcs.' vars_grass_ha{i} '_ha_' num2str(t) '));']);
+                end
             end
         end
-    else
-        % Grass
-        % -----
-        elm_option_ha = option_lcs.grass_ha(:,1);
-        for i = 1:length(vars_grass_ha) 
-            eval(['option_lcs.' vars_grass_ha{i} '_ha = zeros(size(baseline_lcs.' vars_grass_ha{i} '_ha));']);
-            for t = 20:10:50
-                eval(['option_lcs.' vars_grass_ha{i} '_ha_' num2str(t) ' = zeros(size(baseline_lcs.' vars_grass_ha{i} '_ha_' num2str(t) '));']);
-            end
+        elm_ha.(elm_option) = elm_option_ha;
+
+        % Land Use To
+        % -----------       
+        if contains(elm_option, 'wood')
+            % Woods
+            % -----        
+            option_lcs.farm_ha = option_lcs.farm_ha - elm_option_ha;        
+            option_lcs.wood_ha = option_lcs.wood_ha + elm_option_ha;
+        else
+            % Semi-Natural Grassland
+            % ----------------------        
+            option_lcs.farm_ha    = option_lcs.farm_ha    - elm_option_ha;
+            option_lcs.sngrass_ha = option_lcs.sngrass_ha + elm_option_ha;
         end
-    end
-    elm_ha.(elm_option) = elm_option_ha;
-    
-    % Land Use To
-    % -----------       
-    if contains(elm_option, 'wood')
-        % Woods
-        % -----        
-        option_lcs.farm_ha = option_lcs.farm_ha - elm_option_ha;        
-        option_lcs.wood_ha = option_lcs.wood_ha + elm_option_ha;
-    else
-        % Semi-Natural Grassland
-        % ----------------------        
-        option_lcs.farm_ha    = option_lcs.farm_ha    - elm_option_ha;
-        option_lcs.sngrass_ha = option_lcs.sngrass_ha + elm_option_ha;
+
+        option_lcs_all.(elm_option) = option_lcs;
+
     end
     
-    option_lcs_all.(elm_option) = option_lcs;
+    % Save to matfile
+    elms_data_matfile.elm_ha         = elm_ha;
+    elms_data_matfile.option_lcs_all = option_lcs_all;    
     
+end
+
+% 3.2 Agriculture
+% ---------------
+if MP.run_agriculture
     
-    % 3.1.2 Agriculture (+ GHG)
-	% -------------------------
-    if MP.run_agriculture || MP.run_forestry
-        
+    for option_i = 1:num_elm_options
+
+        elm_option = elm_options{option_i};
+
+        % 3.2.1 Agriculture (+ GHG)
+        % -------------------------
         % Note: Data has been rescaled so same arable and grass extent
         % across all 40 years of time series. Do not call NEV agriculture
         % model again here with grass or arable removed as this would
@@ -276,7 +245,7 @@ for option_i = 1:num_elm_options
                 eval(['es_agriculture.ghg_', vars_arable{i}, '_ann    = zeros(size(es_agriculture.ghg_', vars_arable{i}, '_ann));']);                    
             end    
             es_agriculture.arable_food = zeros(size(es_agriculture.arable_food));
-                        
+
         else
             % Grass Option
             % ------------
@@ -299,16 +268,24 @@ for option_i = 1:num_elm_options
             es_agriculture.dairy_food = zeros(size(es_agriculture.dairy_food));
             es_agriculture.beef_food  = zeros(size(es_agriculture.beef_food));
             es_agriculture.sheep_food = zeros(size(es_agriculture.sheep_food));
-            
+
         end
+
+        es_agriculture_all.(elm_option) = es_agriculture;
     end
     
-    es_agriculture_all.(elm_option) = es_agriculture;
+    elms_data_matfile.es_agriculture_all = es_agriculture_all;
+   
+end
+
+% 3.3  Forestry
+% -------------
+if MP.run_agriculture 
     
-    
-    % 3.1.3 Forestry (+ GHG)
-	% ----------------------
-    if MP.run_forestry                                                                     
+    for option_i = 1:num_elm_options
+
+        elm_option = elm_options{option_i};
+
         % Changes in land use from option
         landuses_chg.new2kid        = baseline_lcs.new2kid;
         landuses_chg.wood_ha_chg    = option_lcs.wood_ha    - baseline_lcs.wood_ha;
@@ -327,11 +304,14 @@ for option_i = 1:num_elm_options
                                        landuses_chg, ...
                                        MP.carbon_price);
         es_forestry_all.(elm_option) = es_forestry;
+
     end
 
+    elms_data_matfile.es_forestry_all = es_forestry_all;
+    
 end
 
-% 3.2 Recreation
+% 3.4 Recreation
 % --------------
 if MP.run_recreation
     % The recreation benefits calculations for woodland assume a
@@ -345,15 +325,18 @@ if MP.run_recreation
                                                        baseline_lcs.new2kid, ...
                                                        baseline_lcs.arable_ha(:,1), ...
                                                        baseline_lcs.grass_ha(:,1));
+                                                   
+    elms_data_matfile.es_recreation_all = es_recreation_all;  
+    
 end
 
-% 3.3 Biodiversity, Pollination & Habitat
+% 3.5 Biodiversity, Pollination & Habitat
 % ---------------------------------------
 for option_i = 1:num_elm_options
     
     elm_option = elm_options{option_i};
     
-    % 3.3.1 Biodiversity
+    % 3.5.1 Biodiversity
 	% ------------------
     % JNCC
     if MP.run_biodiversity_jncc
@@ -365,19 +348,19 @@ for option_i = 1:num_elm_options
         es_biodiversity_ucl_all.(elm_option) = fcn_run_biodiversity_ucl(MP.biodiversity_data_folder, option_lcs_all.(elm_option), 'rcp60', 'baseline');
     end
     
-    % 3.3.2 Pollination: Horticultural Yield
+    % 3.5.2 Pollination: Horticultural Yield
     % --------------------------------------
     if MP.run_pollination
         es_pollination_all.(elm_option) = fcn_run_pollination(MP.pollination_data_folder, es_biodiversity_ucl_all.(elm_option), 'rcp60');
     end
     
-    % 3.3.3 Pollination: Wildflower Non-Use
+    % 3.5.3 Pollination: Wildflower Non-Use
     % -------------------------------------
     if MP.run_non_use_pollination
-        es_non_use_pollination_all.(elm_option) = fcn_run_non_use_pollination(MP.non_use_pollination_data_folder, es_biodiversity_ucl_all.(elm_option), 'rcp60', assumption_wtp, assumption_pop, non_use_proportion);
+        es_non_use_pollination_all.(elm_option) = fcn_run_non_use_pollination(MP.non_use_pollination_data_folder, es_biodiversity_ucl_all.(elm_option), 'rcp60', MP.assumption_wtp, MP.assumption_pop, MP.non_use_proportion);
     end
     
-    % 3.3.4 Non Use Habitat
+    % 3.5.4 Non Use Habitat
     % ---------------------
     if MP.run_non_use_habitat
 
@@ -390,7 +373,7 @@ for option_i = 1:num_elm_options
                                                 landuses_chg.wood_ha_chg], ...
                                                 'VariableNames', ...
                                                 {'new2kid', 'sngrass_ha', 'wood_ha'});
-        es_non_use_habitat_all.(elm_option) = fcn_run_non_use_habitat(MP.non_use_habitat_data_folder, non_use_habitat_landuses, non_use_proportion, assumption_areas);
+        es_non_use_habitat_all.(elm_option) = fcn_run_non_use_habitat(MP.non_use_habitat_data_folder, non_use_habitat_landuses, MP.non_use_proportion, MP.assumption_areas);
         % Set values to zero for "no access" options
         if contains(elm_option, 'noaccess')
             es_non_use_habitat_all.(elm_option).nu_habitat_val_sngrass = zeros(cell_info.ncells, 1);
@@ -399,16 +382,42 @@ for option_i = 1:num_elm_options
         end
     end
 end    
-    
-% 3.4 Flooding, Water Treatment & Water Non-Use
+% JNCC
+if MP.run_biodiversity_jncc
+    elms_data_matfile.es_biodiversity_jncc_all = es_biodiversity_jncc_all;
+end
+% UCL
+if MP.run_biodiversity_ucl
+    elms_data_matfile.es_biodiversity_ucl_all = es_biodiversity_ucl_all;
+end
+% Pollination: Horticultural Yield
+if MP.run_pollination
+     elms_data_matfile.es_pollination_all = es_pollination_all;
+end
+if MP.run_non_use_pollination
+    elms_data_matfile.es_non_use_pollination_all = es_non_use_pollination_all;
+end
+% Pollination: Wildflower Non-Use
+if MP.run_non_use_habitat
+     elms_data_matfile.es_non_use_habitat_all = es_non_use_habitat_all;
+end
+       
+% 3.6 Flooding, Water Treatment & Water Non-Use
 % ---------------------------------------------
 if MP.run_water
+
+    % 3.6.2 Load water results and related information
+    % ------------------------------------------------
+    % Water transfer results, including water quality, non-use and flooding
+    % (created running scripts 1 to 6 in Water_Runs)
+    [water_transfer_results, water_transfer_cell2subctch, nfm_data] = fcn_import_water_transfer_info(conn, MP);
+
     % As per recreation, water benefits for wood options are supposed
     % to grow from sng to full wood over growing period. As such
     % need sng and wood values for wood options in advance so do all
     % options here on first iteration.
 
-    % 3.4.1 Flooding
+    % 3.6.2 Flooding
     % --------------
     for opt = elm_options
         if contains(opt{1}, 'arable')
@@ -416,10 +425,11 @@ if MP.run_water
         else
             opt_ha = baseline_lcs.grass_ha(:,1);
         end
-        es_flood_all.(opt{1}) = fcn_run_flooding_transfer_from_results(cell_info, opt{1}, opt_ha, water_transfer_results, water_transfer_cell2subctch, nfm_data, assumption_flooding);
+        es_flood_all.(opt{1}) = fcn_run_flooding_transfer_from_results(cell_info, opt{1}, opt_ha, water_transfer_results, water_transfer_cell2subctch, nfm_data, MP.assumption_flooding);
     end
+    elms_data_matfile.es_flood_all = es_flood_all;
 
-    % 3.4.2 Water Quality: Water Treatment
+    % 3.6.3 Water Quality: Water Treatment
     % ------------------------------------
     for opt = elm_options
         if contains(opt{1}, 'arable')
@@ -429,8 +439,9 @@ if MP.run_water
         end
         es_water_quality_all.(opt{1}) = fcn_run_water_quality_transfer_from_results(cell_info, opt{1}, opt_ha, water_transfer_results, water_transfer_cell2subctch);                 
     end
-
-    % 3.4.3 Water Quality: Non-Use
+    elms_data_matfile.es_water_quality_all = es_water_quality_all;
+    
+    % 3.6.4 Water Quality: Non-Use
     % ----------------------------
     for opt = elm_options
         if contains(opt{1}, 'arable')
@@ -438,14 +449,41 @@ if MP.run_water
         else
             opt_ha = baseline_lcs.grass_ha(:,1);
         end
-        es_water_non_use_all.(opt{1}) = fcn_run_water_non_use_transfer_from_results(cell_info, opt{1}, opt_ha, water_transfer_results, water_transfer_cell2subctch, non_use_proportion);                 
+        es_water_non_use_all.(opt{1}) = fcn_run_water_non_use_transfer_from_results(cell_info, opt{1}, opt_ha, water_transfer_results, water_transfer_cell2subctch, MP.non_use_proportion);                 
     end
+    elms_data_matfile.es_water_non_use_all = es_water_non_use_all;
+    
+    % 3.6.5 Water Quality: Recreation
+    % -------------------------------
+    for opt = elm_options
+        if contains(opt{1}, 'arable')
+            opt_ha = baseline_lcs.arable_ha(:,1); 
+        else
+            opt_ha = baseline_lcs.grass_ha(:,1);
+        end
+        es_water_rec_all.(opt{1}) = fcn_run_water_recreation_transfer_from_results(cell_info, opt{1}, opt_ha, water_transfer_results, water_transfer_cell2subctch, MP.non_use_proportion);                 
+    end
+    elms_data_matfile.es_water_rec_all = es_water_rec_all;
     
 end
 
 
 % 4. Benefit & Cost Calculations
 % ------------------------------
+
+% Initialise Benefits and Cost Structures
+% ---------------------------------------
+for option_i = 1:num_elm_options
+    elm_option                       = elm_options{option_i};                                   % ELM option string, to create field names
+    benefits.(elm_option)            = nan(cell_info.ncells, num_scheme_years);                 % total benefits
+    benefits_table.(elm_option)      = nan(cell_info.ncells, num_benefits, num_scheme_years);   % benefits (see above)
+    costs.(elm_option)               = nan(cell_info.ncells, num_scheme_years);                 % total costs
+    costs_table.(elm_option)         = nan(cell_info.ncells, num_costs, num_scheme_years);      % costs (see above)
+    benefit_cost_ratios.(elm_option) = nan(cell_info.ncells, num_scheme_years);                 % benefit:cost ratio
+    env_outs.(elm_option)            = nan(cell_info.ncells, num_env_outs, num_scheme_years);   % environmental outcomes (see above)
+    es_outs.(elm_option)             = nan(cell_info.ncells, num_es_outs, num_scheme_years);    % ecosystem service outcomes (see above)
+end
+
 for option_i = 1:num_elm_options
     
     elm_option = elm_options{option_i};
@@ -480,26 +518,30 @@ for option_i = 1:num_elm_options
     % 4.7 Water Quality Non-Use
     % -------------------------
     benefit_water_non_use_npv = fcn_calc_npv_water_non_use(MP, elm_option, es_water_non_use_all);
+ 
+    % 4.8 Water Quality Recreation
+    % ----------------------------
+    benefit_water_rec_npv = fcn_calc_npv_water_recreation(MP, elm_option, es_water_rec_all);
           
-    % 4.8 Pollination: Horticultural Yields
+    % 4.9 Pollination: Horticultural Yields
     % -------------------------------------
     benefit_pollination_yield_npv = fcn_calc_npv_pollination(MP, elm_option, es_pollination_all);
         
-    % 4.9 Pollination: Wildflower Non-Use 
+    % 4.10 Pollination: Wildflower Non-Use 
     % -----------------------------------
     benefit_pollination_non_use_npv = fcn_calc_npv_pollination_non_use(MP, elm_option, es_non_use_pollination_all);
     
-    % 4.10 Non Use Habitat
+    % 4.11 Non Use Habitat
     % --------------------
     benefit_habitat_non_use_npv = fcn_calc_npv_non_use_habitat(MP, elm_option, es_non_use_habitat_all);
     
-    % 4.11 Biodiversity
+    % 4.12 Biodiversity
     % -----------------
-    benefit_bio_npv = fcn_calc_npv_biodiversity(MP, elm_option, es_biodiversity_jncc_all, baseline, biodiversity_unit_value);
+    benefit_bio_npv = fcn_calc_npv_biodiversity(MP, elm_option, es_biodiversity_jncc_all, baseline, MP.biodiversity_unit_value);
     
     for t = scheme_years
         
-        % 4.12 Collect benefits for each scheme year
+        % 4.13 Collect benefits for each scheme year
         % ------------------------------------------
         benefits_t = [benefit_ghg_farm_npv(:,t), ...
                       benefit_ghg_dispfood_npv(:,t), ...
@@ -510,6 +552,7 @@ for option_i = 1:num_elm_options
                       benefit_totn_npv(:,t), ...
                       benefit_totp_npv(:,t), ...
                       benefit_water_non_use_npv(:,t), ...
+                      benefit_water_rec_npv(:,t), ...
                       benefit_pollination_yield_npv(:,t), ...
                       benefit_pollination_non_use_npv(:,t), ...
                       benefit_habitat_non_use_npv(:,t), ...
@@ -518,7 +561,7 @@ for option_i = 1:num_elm_options
         benefits.(elm_option)(:, t)          = nansum(benefits_t,2);
         benefits_table.(elm_option)(:, :, t) = benefits_t;    
         
-        % 4.13 Collect costs for each scheme year
+        % 4.14 Collect costs for each scheme year
         % ---------------------------------------
         costs_t = [opp_cost_farm_npv(:,t), ...
                    cost_forestry_npv(:,t), ...
@@ -528,22 +571,23 @@ for option_i = 1:num_elm_options
         costs.(elm_option)(:, t)          = nansum(costs_t,2);
         costs_table.(elm_option)(:, :, t) = costs_t;    
         
-        % 4.14 Calculate benefit cost ratio using NPVs
+        % 4.15 Calculate benefit cost ratio using NPVs
         % --------------------------------------------
         % Note: Introduces NaN and Inf values by dividing by zero
         % all of these cases are where there is no farm_ha to start with
         % these are removed in payment mechanisms so shouldn't be a problem
         benefit_cost_ratios.(elm_option)(:, t) = benefits.(elm_option)(:, t)  ./ costs.(elm_option)(:, t); 
         
-        % 4.15 Collect ES outcomes as ES values
+        % 4.16 Collect ES outcomes as ES values
         % -------------------------------------
-        % vars_es_outs  = {'ghg', 'rec', 'flood', 'tot_n', 'tot_p', 'water_non_use' 'poll_yield', 'poll_non_use', 'habitat_non_use', 'biodiversity'};
+        % vars_es_outs  = {'ghg', 'rec', 'flood', 'tot_n', 'tot_p', 'water_non_use' 'water_rec' 'poll_yield', 'poll_non_use', 'habitat_non_use', 'biodiversity'};
         es_outs_t = [benefit_ghg_npv(:,t), ...
                      benefit_rec_npv(:,t), ...
                      benefit_flood_npv(:,t), ...
                      benefit_totn_npv(:,t), ...
                      benefit_totp_npv(:,t), ...
                      benefit_water_non_use_npv(:,t), ...
+                     benefit_water_rec_npv(:,t), ...
                      benefit_pollination_yield_npv(:,t), ...
                      benefit_pollination_non_use_npv(:,t), ...
                      benefit_habitat_non_use_npv(:,t), ...
@@ -639,7 +683,7 @@ end
 % =============================
 % Depends on what carbon price has been used
 % This depends on choice of recreation access in MP.site_type
-save([MP.data_out 'elm_option_results_', MP.carbon_price_str, '.mat'], ...
+save([MP.data_out 'elm_data_', MP.carbon_price_str, '.mat'], ...
      'cell_info', ...
      'num_benefits', ...
      'num_costs', ...
@@ -659,3 +703,6 @@ save([MP.data_out 'elm_option_results_', MP.carbon_price_str, '.mat'], ...
      'benefit_cost_ratios', ...
      'env_outs', ...
      'es_outs');
+ 
+ toc
+ 

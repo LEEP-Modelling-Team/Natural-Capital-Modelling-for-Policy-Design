@@ -1,4 +1,4 @@
-function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_num, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, data_year)
+function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_num, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year)
 
     % (1) Set up
     %  ==========
@@ -13,23 +13,34 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
     % Depends on carbon price
     load(data_path);
     
-    % Remove Dodgy Data
-    % -----------------
-    dodgy_data_ind = round(costs.arable_reversion_sng_access(:,1),2)==534.31;
-    % cells
-    cell_info.new2kid  = cell_info.new2kid(~dodgy_data_ind);
+    
+    
+    % Remove cells 
+    % ------------
+    % Cells that are majority urban (excluding water area)
+    cell_remove_ind = (cell_info.baseline_lcs.urban_ha./(cell_info.baseline_lcs.wood_ha + cell_info.baseline_lcs.farm_ha + cell_info.baseline_lcs.sngrass_ha + cell_info.baseline_lcs.urban_ha) ...
+                            > urban_pct_limit); 
+    
+    % Cells where no farm land
+    cell_remove_ind = or(cell_remove_ind, (cell_info.baseline_lcs.farm_ha < 1)); 
+    
+    % Cells where no land cost
+    cell_remove_ind = or(cell_remove_ind, (costs.arable_reversion_sng_noaccess(:,1) + costs.destocking_sng_noaccess(:,1) == 0)); 
+    
+    % Remove Cells
+    cell_info.new2kid  = cell_info.new2kid(~cell_remove_ind);
     cell_info.ncells   = length(cell_info.new2kid);
     % benefits
     for k = 1:length(elm_options)
         elm_option_k = elm_options{k};
-        benefits.(elm_option_k)             = benefits.(elm_option_k)(~dodgy_data_ind,:);
-        benefits_table.(elm_option_k)       = benefits_table.(elm_option_k)(~dodgy_data_ind,:,:);
-        benefit_cost_ratios.(elm_option_k)  = benefit_cost_ratios.(elm_option_k)(~dodgy_data_ind,:);
-        costs.(elm_option_k)                = costs.(elm_option_k)(~dodgy_data_ind,:);
-        costs_table.(elm_option_k)          = costs_table.(elm_option_k)(~dodgy_data_ind,:,:);
-        es_outs.(elm_option_k)              = es_outs.(elm_option_k)(~dodgy_data_ind,:,:);
-        env_outs.(elm_option_k)             = env_outs.(elm_option_k)(~dodgy_data_ind,:,:);
-        elm_ha.(elm_option_k)               = elm_ha.(elm_option_k)(~dodgy_data_ind);
+        benefits.(elm_option_k)             = benefits.(elm_option_k)(~cell_remove_ind,:);
+        benefits_table.(elm_option_k)       = benefits_table.(elm_option_k)(~cell_remove_ind,:,:);
+        benefit_cost_ratios.(elm_option_k)  = benefit_cost_ratios.(elm_option_k)(~cell_remove_ind,:);
+        costs.(elm_option_k)                = costs.(elm_option_k)(~cell_remove_ind,:);
+        costs_table.(elm_option_k)          = costs_table.(elm_option_k)(~cell_remove_ind,:,:);
+        es_outs.(elm_option_k)              = es_outs.(elm_option_k)(~cell_remove_ind,:,:);
+        env_outs.(elm_option_k)             = env_outs.(elm_option_k)(~cell_remove_ind,:,:);
+        elm_ha.(elm_option_k)               = elm_ha.(elm_option_k)(~cell_remove_ind);
     end    
     
     % Choose sample of farmers to go into price search

@@ -89,7 +89,7 @@ function [npv_ghg_farm, npv_ghg_dispfood, npv_ghg_forestry, npv_ghg_soil_forestr
     %  Carbon annuity calculated in NEV fcn_run_forestry is only a single
     %  value for each cell since Carbine does not respond to climate. This
     %  is calculated over a single rotation period and can be used as the
-    %  annuity for a permanent land use change on the assumptiont that
+    %  annuity for a permanent land use change on the assumption that
     %  these timber carbon savings are repeated over all subsequent
     %  rotation
     
