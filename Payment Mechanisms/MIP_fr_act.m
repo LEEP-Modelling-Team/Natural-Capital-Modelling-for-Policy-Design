@@ -19,7 +19,7 @@
 %                         o logs: folder in which to find warmstarts and
 %                                 write node logs
 
-function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, cplex_options)
+function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, bio_constraint, cnst_data, cnst_target, cplex_options)
 
 
     % 1. Initialise
@@ -42,6 +42,7 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
     cplex.Param.parallel.Cur = 1;
     cplex.Param.mip.tolerances.integrality.Cur = 0;
     cplex.Param.mip.tolerances.mipgap.Cur = 0;
+    cplex.Param.mip.tolerances.absmipgap.Cur = 0;
     cplex.Param.timelimit.Cur = cplex_options.time;
     cplex.Param.workdir.Cur = cplex_options.logs;
     %  cplex.DisplayFunc = '';   
@@ -65,7 +66,7 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
         C_col = C_ha(:,col);
         Ro(col) = max(C_col(~isinf(C_col)));
     end
-    R = max(Ro(~isinf(Ro)));
+    R = max(Ro(~isinf(Ro))) * 10;
     Rf = R * qf;
     S = max(Rf);
     T = 1;
@@ -114,8 +115,8 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
     Aineq1 = [Aineq1_p, Aineq1_u, Aineq1_d];
 
     Bineq1 = ones(num_farmers, 1);
-    B1_lb = zeros(num_farmers, 1);
-    B1_ub = Bineq1;
+    B1_lb  = zeros(num_farmers, 1);
+    B1_ub  = Bineq1;
     
     clear Aineq1_p Aineq1_u Aineq1_d
 
@@ -190,8 +191,10 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
     Aineq6 = [Aineq6_p, Aineq6_u, Aineq6_d];
 
     Bineq6 = budget;
-    B6_lb = budget;
-    B6_ub = budget + 10000;
+    B6_lb = 0;
+    B6_ub = budget;
+%     B6_lb = budget;
+%     B6_ub = +inf;
     
     clear Aineq6_p Aineq6_u Aineq6_d
 
@@ -237,14 +240,46 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
     B = [Bineq1; Bineq2; Bineq3; Bineq4; Bineq5; Bineq6; Bineq8; Bineq9; Bineq10];
     B_lb = [B1_lb; B2_lb; B3_lb; B4_lb; B5_lb; B6_lb; B8_lb; B9_lb; B10_lb];
     B_ub = [B1_ub; B2_ub; B3_ub; B4_ub; B5_ub; B6_ub; B8_ub; B9_ub; B10_ub];
-    
-%     options = cplexoptimset;
-%     options.Display = 'on';
-%     [x, fval, exitflag, output] = cplexmilp (f, A, B, [], [],...
-%       [], [], [], lb, ub, ctype, [], options);
-    % Add to cplex class
     cplex.addRows(B_lb, A, B_ub);
 
+    clear Aineq1 Aineq2 Aineq3 Aineq4 Aineq5 Aineq6 Aineq8 Aineq9 Aineq10
+    clear Bineq1 Bineq2 Bineq3 Bineq4 Bineq5 Bineq6 Bineq8 Bineq9 Bineq10
+    clear B1_lb B2_lb B3_lb B4_lb B5_lb B6_lb B8_lb B9_lb B10_lb
+    clear B1_ub B2_ub B3_ub B4_ub B5_ub B6_ub B8_ub B9_ub B10_ub
+    
+   
+    % 11th inequality constraint: 
+    % biodiversity groups must experience 10% gain
+%     if bio_constraint
+%         num_groups = length(cnst_target);   
+%         A_p = sparse(num_groups, num_options);
+%         A_u = sparse(num_groups, num_farmers);
+%         A_x = [];
+%         for j = 1:num_farmers
+%             A_x = [A_x, sparse(diag(cnst_data(j,:) - cnst_target'))];
+%         end
+%         A  = [A_p, A_u, A_x];
+%         Bl = zeros(num_groups,1);
+%         Bu = inf(num_groups,1);
+%         if ~isempty(A),cplex.addRows(Bl, A, Bu); end
+%         clear A A_p A_x Bl Bu    
+%     end
+    if bio_constraint
+        num_groups = length(cnst_target);   
+        A_p = sparse(num_groups, num_options);
+        A_u = sparse(num_groups, num_farmers);
+        A_x = [];
+        for j = 1:num_farmers
+            A_x = [A_x, sparse(diag(cnst_data(j,:)))];
+        end
+        A  = [A_p, A_u, A_x];
+        Bl = cnst_target;
+        Bu = inf(num_groups,1);
+        if ~isempty(A),cplex.addRows(Bl, A, Bu); end
+        clear A A_p A_x Bl Bu    
+    end
+    
+    
     
     % 3. SOLVE
     % ========

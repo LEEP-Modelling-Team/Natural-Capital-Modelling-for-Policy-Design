@@ -13,6 +13,7 @@ rng(23112010)
 payment_mechanism = 'fr_act';
 unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
+bio_constraint = false;
 carbon_price_string = 'non_trade_central';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
@@ -38,10 +39,12 @@ data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
 % -------------
 data_year = 1;    
 sample_size = 'no';  % all data
-[b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
+[b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
 num_prices  = length(price_vars);
 num_options = size(b,2);
 num_farmers = size(b,1);
+
+cnst_target = floor(cnst_target/1000);
 
 % (b) Reduce problem size
 % -----------------------
@@ -59,21 +62,23 @@ for i = 1:length(elm_options)
     excluded_cells = excluded_cells .* cell_over_budget';
     prices_ub(i)   = price_pts(find(ind_over_budget, 1)-1);
 end
+prices_ub = prices_ub;
 
 % (c) Reduce to relevant cells
 % ----------------------------
-%  Remove cells where could no possible price would enduce participation
+%  Remove cells where no possible price would enduce participation
 excluded_cells = logical(excluded_cells);
 b(excluded_cells, :) = [];
 c(excluded_cells, :) = [];
 q(excluded_cells, :) = [];
+cnst_data(excluded_cells, :) = [];
 
 
 % 3. MIP for Global Optimal Prices
 % --------------------------------
 cplex_options.time = 1800;
 cplex_options.logs = cplex_folder;  
-[prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, cplex_options);
+[prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, bio_constraint, cnst_data, cnst_target, cplex_options);
 
 % This gives slightly different result though putting prices back through
 % benefits calculator shows it is wrong ...

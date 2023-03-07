@@ -18,16 +18,16 @@ conn = fcn_connect_database(server_flag);
 % ------------------------
 json = ['{"id": "E92000001",'...
         '"feature_type": "integrated_countries",' ...
-        '"run_lcs": false,' ...
-        '"run_agriculture": false,' ...
-        '"run_forestry": false,' ...
-        '"run_recreation": false,' ...
-        '"run_biodiversity_jncc": false,' ...
-        '"run_biodiversity_ucl": false,' ...
-        '"run_water": false,' ...
-        '"run_pollination": false,' ...
-        '"run_non_use_pollination": false,' ...
-        '"run_non_use_habitat": false}'];
+        '"run_lcs": true,' ...
+        '"run_agriculture": true,' ...
+        '"run_forestry": true,' ...
+        '"run_recreation": true,' ...
+        '"run_biodiversity_jncc": true,' ...
+        '"run_biodiversity_ucl": true,' ...
+        '"run_water": true,' ...
+        '"run_pollination": true,' ...
+        '"run_non_use_pollination": true,' ...
+        '"run_non_use_habitat": true}'];
 % Decode JSON object/string & set other default parameters
 MP = fcn_set_model_parameters(conn, json, server_flag);
 
@@ -280,7 +280,7 @@ end
 
 % 3.3  Forestry
 % -------------
-if MP.run_agriculture 
+if MP.run_forestry 
     
     for option_i = 1:num_elm_options
 
@@ -288,12 +288,12 @@ if MP.run_agriculture
 
         % Changes in land use from option
         landuses_chg.new2kid        = baseline_lcs.new2kid;
-        landuses_chg.wood_ha_chg    = option_lcs.wood_ha    - baseline_lcs.wood_ha;
-        landuses_chg.sngrass_ha_chg = option_lcs.sngrass_ha - baseline_lcs.sngrass_ha;
-        landuses_chg.arable_ha_chg  = es_agriculture.arable_ha(:,1) - baseline_lcs.arable_ha(:,1);
-        landuses_chg.tgrass_ha_chg  = es_agriculture.tgrass_ha(:,1) - baseline_lcs.tgrass_ha(:,1);
-        landuses_chg.pgrass_ha_chg  = es_agriculture.pgrass_ha(:,1) - baseline_lcs.pgrass_ha(:,1);
-        landuses_chg.rgraz_ha_chg   = es_agriculture.rgraz_ha(:,1)  - baseline_lcs.rgraz_ha(:,1);
+        landuses_chg.wood_ha_chg    = option_lcs_all.(elm_option).wood_ha    - baseline_lcs.wood_ha;
+        landuses_chg.sngrass_ha_chg = option_lcs_all.(elm_option).sngrass_ha - baseline_lcs.sngrass_ha;
+        landuses_chg.arable_ha_chg  = es_agriculture_all.(elm_option).arable_ha(:,1) - baseline_lcs.arable_ha(:,1);
+        landuses_chg.tgrass_ha_chg  = es_agriculture_all.(elm_option).tgrass_ha(:,1) - baseline_lcs.tgrass_ha(:,1);
+        landuses_chg.pgrass_ha_chg  = es_agriculture_all.(elm_option).pgrass_ha(:,1) - baseline_lcs.pgrass_ha(:,1);
+        landuses_chg.rgraz_ha_chg   = es_agriculture_all.(elm_option).rgraz_ha(:,1)  - baseline_lcs.rgraz_ha(:,1);
 
         % Note: Even if no woodland planted, timber benefits and costs
         % arise from extant managed forest in certain cells. These net out
@@ -679,8 +679,75 @@ for option_i = 1:num_elm_options
     
 end    
 
-% (5) Save results to .mat file
-% =============================
+
+% 6. Biodiversity Constraint Data
+% -------------------------------
+%  
+    
+% 6.1 Biodiversity Group Data
+% ---------------------------
+% Check that data with groups from xlsx files are in same order as the
+% data from the model estimation.
+load(strcat(MP.biodiversity_data_folder, 'NEVO_Biodiversity_UCL_data.mat'), 'Biodiversity');    
+names_poll = cell2table(Biodiversity.Names_Pollinators, 'VariableNames',  {'species'});
+names_prio = cell2table(Biodiversity.Names_PrioritySpecies, 'VariableNames',  {'species'});
+
+grps_poll = readtable(strcat(MP.biodiversity_data_folder, 'biod_poll_species_groups.xlsx'));
+grps_prio = readtable(strcat(MP.biodiversity_data_folder, 'biod_prio_species_groups.xlsx'));
+
+% Join names to grps to ensure group names are aligned with species names in data   
+grps_poll = join(names_poll, grps_poll, 'Keys' , {'species'});
+grps_prio = join(names_prio, grps_prio, 'Keys' , {'species'});    
+    
+
+% 6.2 Grouping Matrices
+% ---------------------
+%  Create dummy variable matrices that can be use to add up quantity of
+%  presence measures for species in agroup by cell 
+cat_poll = categorical(grps_poll.group);
+names_poll_grp = categories(cat_poll);
+dmat_poll = dummyvar(cat_poll);
+
+cat_prio = categorical(grps_prio.group);
+names_prio_grp = categories(cat_prio);
+dmat_prio = dummyvar(cat_prio);
+
+biodiversity_constraints.names_grp = [names_poll_grp; names_prio_grp];
+    
+% 6.3 Target Counts by Groups
+% ---------------------------
+%  Quantity of presence that represents a 10% increase for species
+%  group over baseline in each period
+biodiversity_constraints.targets_20 = [ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.pollinator_presence_20 * dmat_poll)), ...
+                                       ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.priority_presence_20 * dmat_prio))]';
+biodiversity_constraints.targets_30 = [ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.pollinator_presence_30 * dmat_poll)), ...
+                                       ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.priority_presence_30 * dmat_prio))]';
+biodiversity_constraints.targets_40 = [ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.pollinator_presence_40 * dmat_poll)), ...
+                                       ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.priority_presence_40 * dmat_prio))]';
+biodiversity_constraints.targets_50 = [ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.pollinator_presence_50 * dmat_poll)), ...
+                                       ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.priority_presence_50 * dmat_prio))]';
+    
+% 6.4 Additions to Presence of Groups by each land use change
+% -----------------------------------------------------------
+%  For each cell in each NEV period calculate how much each different luc
+%  option impacts on the quantity of presence of species groups.
+for option_i = 1:num_elm_options
+
+    elm_option = elm_options{option_i};
+        
+    biodiversity_constraints.(elm_option).data_20 = [(es_biodiversity_ucl_all.(elm_option).pollinator_presence_20 - baseline.es_biodiversity_ucl.pollinator_presence_20) * dmat_poll, ...
+                                                     (es_biodiversity_ucl_all.(elm_option).priority_presence_20   - baseline.es_biodiversity_ucl.priority_presence_20) * dmat_prio];
+    biodiversity_constraints.(elm_option).data_30 = [(es_biodiversity_ucl_all.(elm_option).pollinator_presence_30 - baseline.es_biodiversity_ucl.pollinator_presence_30) * dmat_poll, ...
+                                                     (es_biodiversity_ucl_all.(elm_option).priority_presence_30   - baseline.es_biodiversity_ucl.priority_presence_30) * dmat_prio];
+    biodiversity_constraints.(elm_option).data_40 = [(es_biodiversity_ucl_all.(elm_option).pollinator_presence_40 - baseline.es_biodiversity_ucl.pollinator_presence_40) * dmat_poll, ...
+                                                     (es_biodiversity_ucl_all.(elm_option).priority_presence_40   - baseline.es_biodiversity_ucl.priority_presence_40) * dmat_prio];
+    biodiversity_constraints.(elm_option).data_50 = [(es_biodiversity_ucl_all.(elm_option).pollinator_presence_50 - baseline.es_biodiversity_ucl.pollinator_presence_50) * dmat_poll, ...
+                                                     (es_biodiversity_ucl_all.(elm_option).priority_presence_50   - baseline.es_biodiversity_ucl.priority_presence_50) * dmat_prio];
+end
+    
+
+% 7. Save results to .mat file
+% ----------------------------
 % Depends on what carbon price has been used
 % This depends on choice of recreation access in MP.site_type
 save([MP.data_out 'elm_data_', MP.carbon_price_str, '.mat'], ...
@@ -702,7 +769,8 @@ save([MP.data_out 'elm_data_', MP.carbon_price_str, '.mat'], ...
      'costs_table', ...
      'benefit_cost_ratios', ...
      'env_outs', ...
-     'es_outs');
+     'es_outs', ...
+     'biodiversity_constraints');
  
  toc
  

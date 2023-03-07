@@ -9,7 +9,7 @@ rng(23112010)
 % Model
 % -----
 payment_mechanisms = {'fr_env', 'fr_es', 'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'};
-payment_mechanisms = {'fr_act', 'oc_pay'};
+payment_mechanisms = {'oc_pay', 'fr_act'};
 unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
 carbon_price_string = 'non_trade_central';
@@ -285,7 +285,7 @@ for i = 1:numel(payment_mechanisms)
     summary_option = tabulate(results.option_choice);
     option_choice_tbl = array2table(summary_option, 'VariableNames', {'option_idx', 'count', 'percent'});
     option_names_tbl  = cell2table(elm_options', 'VariableNames', {'option_name'});
-    height_diff = height(option_choice_tbl) < height(option_names_tbl);
+    height_diff = height(option_names_tbl) - height(option_choice_tbl);
     if height_diff > 0
        new_rows = array2table([(height(option_choice_tbl)+1:1:height(option_choice_tbl)+height_diff)' zeros(height_diff, width(option_choice_tbl)-1)], 'VariableNames', option_choice_tbl.Properties.VariableNames);
        option_choice_tbl = vertcat(option_choice_tbl, new_rows); 

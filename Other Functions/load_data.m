@@ -1,4 +1,4 @@
-function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_num, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year)
+function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2kid] = load_data(sample_num, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year)
 
     % (1) Set up
     %  ==========
@@ -12,9 +12,7 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
     % Generated in script2_run_elm_options.m
     % Depends on carbon price
     load(data_path);
-    
-    
-    
+           
     % Remove cells 
     % ------------
     % Cells that are majority urban (excluding water area)
@@ -41,6 +39,10 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
         es_outs.(elm_option_k)              = es_outs.(elm_option_k)(~cell_remove_ind,:,:);
         env_outs.(elm_option_k)             = env_outs.(elm_option_k)(~cell_remove_ind,:,:);
         elm_ha.(elm_option_k)               = elm_ha.(elm_option_k)(~cell_remove_ind);
+        biodiversity_constraints.(elm_option_k).data_20 = biodiversity_constraints.(elm_option_k).data_20(~cell_remove_ind);
+        biodiversity_constraints.(elm_option_k).data_30 = biodiversity_constraints.(elm_option_k).data_30(~cell_remove_ind);
+        biodiversity_constraints.(elm_option_k).data_40 = biodiversity_constraints.(elm_option_k).data_40(~cell_remove_ind);
+        biodiversity_constraints.(elm_option_k).data_50 = biodiversity_constraints.(elm_option_k).data_50(~cell_remove_ind);
     end    
     
     % Choose sample of farmers to go into price search
@@ -119,15 +121,15 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
     benefits_year = nan(cell_info.ncells, num_elm_options);
     costs_year    = nan(cell_info.ncells, num_elm_options);
     for k = 1:num_elm_options
-        benefits_year(:, k)         = benefits.(elm_options{k})(:, data_year);
-        costs_year(:, k)            = costs.(elm_options{k})(:, data_year);
+        benefits_year(:, k) = benefits.(elm_options{k})(:, data_year);
+        costs_year(:, k)    = costs.(elm_options{k})(:, data_year);
         if ~strcmp(payment_mechanism, 'fr_act')
             quantities.(elm_options{k}) = quantities.(elm_options{k})(:, :, data_year);
         end
     end
 
-    % Use farmer_sample_ind to select farmers to include in price search
-    % ------------------------------------------------------------------    
+    % Use farmer_sample_ind to select farmers 
+    % ---------------------------------------
     % Extract relevant rows from above arrays/structures
     b = benefits_year(farmer_sample_ind, :);    
     c = costs_year(farmer_sample_ind, :);
@@ -142,5 +144,17 @@ function [b, c, q, budget, elm_options, vars_price, new2kid] = load_data(sample_
         end
     end
     new2kid = cell_info.new2kid;
+
+    % Constraint Data
+    % ---------------
+    cnst_data = nan(cell_info.ncells, num_elm_options);
+    for k = 1:num_elm_options
+        cnst_data(:, k) = biodiversity_constraints.(elm_option_k).data_20(farmer_sample_ind);
+    end    
+%     % Target is for average contribution of a cell for an overall national
+%     % 10% increase
+%     cnst_target = biodiversity_constraints.targets_20/length(cell_remove_ind);
+    % Target is for an absolute increase in national biodiversity
+    cnst_target = biodiversity_constraints.targets_20;   
     
 end
