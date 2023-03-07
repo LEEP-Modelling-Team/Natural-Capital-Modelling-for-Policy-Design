@@ -43,6 +43,7 @@ function MP = fcn_set_model_parameters(conn, json, server_flag)
         % convert from dollars to pounds at 2020 exchange rate
         carbon_price = carbon_price/1.2837;    
     else
+        % Retrieve 300 year time series from 2020 from NEV database
         carbon_price = fcn_get_carbon_price(conn, MP.carbon_price_str);
     end
     MP.carbon_price = carbon_price;

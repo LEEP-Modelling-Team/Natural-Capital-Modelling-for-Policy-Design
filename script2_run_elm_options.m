@@ -716,7 +716,7 @@ biodiversity_constraints.names_grp = [names_poll_grp; names_prio_grp];
     
 % 6.3 Target Counts by Groups
 % ---------------------------
-%  Quantity of presence that represents a 10% increase for species
+%  Quantity of presence that represents a MP.bio_pct_increase_target% increase for species
 %  group over baseline in each period
 biodiversity_constraints.targets_20 = [ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.pollinator_presence_20 * dmat_poll)), ...
                                        ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.priority_presence_20 * dmat_prio))]';

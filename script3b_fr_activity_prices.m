@@ -44,7 +44,7 @@ num_prices  = length(price_vars);
 num_options = size(b,2);
 num_farmers = size(b,1);
 
-cnst_target = floor(cnst_target/1000);
+cnst_target = floor(cnst_target/5);
 
 % (b) Reduce problem size
 % -----------------------
@@ -62,7 +62,6 @@ for i = 1:length(elm_options)
     excluded_cells = excluded_cells .* cell_over_budget';
     prices_ub(i)   = price_pts(find(ind_over_budget, 1)-1);
 end
-prices_ub = prices_ub;
 
 % (c) Reduce to relevant cells
 % ----------------------------
@@ -71,7 +70,7 @@ excluded_cells = logical(excluded_cells);
 b(excluded_cells, :) = [];
 c(excluded_cells, :) = [];
 q(excluded_cells, :) = [];
-cnst_data(excluded_cells, :) = [];
+cnst_data(:,:,excluded_cells) = [];
 
 
 % 3. MIP for Global Optimal Prices

@@ -39,10 +39,10 @@ function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2
         es_outs.(elm_option_k)              = es_outs.(elm_option_k)(~cell_remove_ind,:,:);
         env_outs.(elm_option_k)             = env_outs.(elm_option_k)(~cell_remove_ind,:,:);
         elm_ha.(elm_option_k)               = elm_ha.(elm_option_k)(~cell_remove_ind);
-        biodiversity_constraints.(elm_option_k).data_20 = biodiversity_constraints.(elm_option_k).data_20(~cell_remove_ind);
-        biodiversity_constraints.(elm_option_k).data_30 = biodiversity_constraints.(elm_option_k).data_30(~cell_remove_ind);
-        biodiversity_constraints.(elm_option_k).data_40 = biodiversity_constraints.(elm_option_k).data_40(~cell_remove_ind);
-        biodiversity_constraints.(elm_option_k).data_50 = biodiversity_constraints.(elm_option_k).data_50(~cell_remove_ind);
+        biodiversity_constraints.(elm_option_k).data_20 = biodiversity_constraints.(elm_option_k).data_20(~cell_remove_ind, :);
+        biodiversity_constraints.(elm_option_k).data_30 = biodiversity_constraints.(elm_option_k).data_30(~cell_remove_ind, :);
+        biodiversity_constraints.(elm_option_k).data_40 = biodiversity_constraints.(elm_option_k).data_40(~cell_remove_ind, :);
+        biodiversity_constraints.(elm_option_k).data_50 = biodiversity_constraints.(elm_option_k).data_50(~cell_remove_ind, :);
     end    
     
     % Choose sample of farmers to go into price search
@@ -147,10 +147,12 @@ function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2
 
     % Constraint Data
     % ---------------
+    num_species_grp = length(biodiversity_constraints.names_grp);
     cnst_data = nan(cell_info.ncells, num_elm_options);
     for k = 1:num_elm_options
-        cnst_data(:, k) = biodiversity_constraints.(elm_option_k).data_20(farmer_sample_ind);
+        cnst_data(:, :, k) = biodiversity_constraints.(elm_options{k}).data_20(farmer_sample_ind, :);
     end    
+    cnst_data = permute(cnst_data, [2,3,1]);   % reorientate so rows: sp_grp, cols: option, depth: cells 
 %     % Target is for average contribution of a cell for an overall national
 %     % 10% increase
 %     cnst_target = biodiversity_constraints.targets_20/length(cell_remove_ind);

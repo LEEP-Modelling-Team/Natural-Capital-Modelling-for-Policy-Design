@@ -35,7 +35,7 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
     % 1.2. CLPEX optimisation object
     % ------------------------------
     cplex = Cplex('elms_lp');
-    cplex.Model.sense = 'minimize';
+    cplex.Model.sense = 'maximize';
     cplex.Param.emphasis.mip.Cur = 0; % balanced
 	% cplex.Param.emphasis.mip.Cur = 1; % emphasise feasibility
     cplex.Param.mip.strategy.search.Cur = 2;
@@ -92,7 +92,7 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
     % ==============    
     f_p = sparse(num_options, 1);
     f_u = sparse(num_farmers, 1);
-    f_x = -bt(:);
+    f_x = bt(:);
     f = [f_p; f_u; f_x];
     clear f_p f_u f_x
    
@@ -265,13 +265,11 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
 %         clear A A_p A_x Bl Bu    
 %     end
     if bio_constraint
-        num_groups = length(cnst_target);   
+        num_groups = length(cnst_target); 
+        cnst_data = reshape(cnst_data, length(cnst_target), []); % Reshape so have blocks of option to species group outcomes for each cell
         A_p = sparse(num_groups, num_options);
         A_u = sparse(num_groups, num_farmers);
-        A_x = [];
-        for j = 1:num_farmers
-            A_x = [A_x, sparse(diag(cnst_data(j,:)))];
-        end
+        A_x = cnst_data;
         A  = [A_p, A_u, A_x];
         Bl = cnst_target;
         Bu = inf(num_groups,1);
