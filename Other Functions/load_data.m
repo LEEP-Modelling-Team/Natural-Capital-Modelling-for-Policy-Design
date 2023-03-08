@@ -28,7 +28,6 @@ function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2
     % Remove Cells
     cell_info.new2kid  = cell_info.new2kid(~cell_remove_ind);
     cell_info.ncells   = length(cell_info.new2kid);
-    % benefits
     for k = 1:length(elm_options)
         elm_option_k = elm_options{k};
         benefits.(elm_option_k)             = benefits.(elm_option_k)(~cell_remove_ind,:);
@@ -53,6 +52,7 @@ function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2
         budget = (unscaled_budget/cell_info.ncells) * sample_num;
     elseif strcmp(sample_num, 'no')
         farmer_sample_ind = true(cell_info.ncells,1);
+        sample_num = cell_info.ncells;
         budget = unscaled_budget;
     else
         fprintf('''sample_num'' can only assume a numeric value or ''no'' if no sampling is required\n'); 
@@ -147,15 +147,11 @@ function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2
 
     % Constraint Data
     % ---------------
-    num_species_grp = length(biodiversity_constraints.names_grp);
-    cnst_data = nan(cell_info.ncells, num_elm_options);
+    cnst_data = nan(sample_num, num_elm_options);
     for k = 1:num_elm_options
         cnst_data(:, :, k) = biodiversity_constraints.(elm_options{k}).data_20(farmer_sample_ind, :);
     end    
     cnst_data = permute(cnst_data, [2,3,1]);   % reorientate so rows: sp_grp, cols: option, depth: cells 
-%     % Target is for average contribution of a cell for an overall national
-%     % 10% increase
-%     cnst_target = biodiversity_constraints.targets_20/length(cell_remove_ind);
     % Target is for an absolute increase in national biodiversity
     cnst_target = biodiversity_constraints.targets_20;   
     

@@ -218,6 +218,10 @@ function MP = fcn_set_model_parameters(conn, json, server_flag)
     MP.rpi_ghg     = MP.rpi_all(find(MP.rpi_all==MP.price_year),2)/MP.rpi_all(find(MP.rpi_all==2020),2);       %Data year = 2020
     MP.rpi_nuhab   = MP.rpi_all(find(MP.rpi_all==MP.price_year),2)/MP.rpi_all(find(MP.rpi_all==2005),2);       %Data year = 2005
     MP.rpi_biod    = MP.rpi_all(find(MP.rpi_all==MP.price_year),2)/MP.rpi_all(find(MP.rpi_all==2020),2);       %Data year = 2020
+    MP.rpi_hay     = MP.rpi_all(find(MP.rpi_all==MP.price_year),2)/MP.rpi_all(find(MP.rpi_all==2020),2);       %Data year = 2023 (set to 2020 as no RPI for 2023)   
+    MP.rpi_grass   = MP.rpi_all(find(MP.rpi_all==MP.price_year),2)/MP.rpi_all(find(MP.rpi_all==1999),2);       %Data year = 1999
+    
+    
     
     % Data Paths
     % ----------

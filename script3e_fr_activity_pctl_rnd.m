@@ -13,6 +13,7 @@ rng(23112010)
 payment_mechanism = 'fr_act_pctl_rnd';
 unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
+bio_constraint = false;
 carbon_price_string = 'non_trade_central';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
@@ -33,7 +34,7 @@ data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
 % ---------------
 data_year = 1;    
 sample_size = 'no';  % all data
-[b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
+[b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
 num_prices  = length(price_vars);
 num_options = size(b,2);
 num_farmers = size(b,1);
@@ -63,6 +64,7 @@ spend    = sum(prices.*q.*uptake, 2);
 mc_spend  = zeros(Niter, 1);
 mc_fval   = zeros(Niter, 1);
 mc_uptake = zeros(num_farmers, 1);
+mc_cnst   = zeros(Niter, 1);
 
 for i = 1:Niter
     
@@ -75,15 +77,30 @@ for i = 1:Niter
     % Select most benefits in budget
     % ------------------------------
     uptake_i    = uptake .* inbudget_ind;
-    mc_uptake   = mc_uptake + sum(uptake_i,2);
+    mc_uptake   = mc_uptake + sum(uptake_i,2);        
     mc_spend(i) = sum(prices.*q.*uptake_i, 'all');
-    mc_fval(i)  = sum(b.*uptake_i, 'all');    
-    
+    mc_fval(i)  = sum(b.*uptake_i, 'all'); 
+        
+    % Check if meets constraint
+    % -------------------------
+    num_spgrp = length(cnst_target);
+    spgrp_chg = zeros(num_spgrp,1);
+    for k = 1:num_spgrp
+        spgrp_chg(k) = sum(uptake_i.*squeeze(cnst_data(k,:,:))', 'all');        
+    end
+    if ~any(spgrp_chg < cnst_target)
+        mc_cnst(i) = 1;
+    end
+        
 end
 
 % Uptake as a probability
 % -----------------------
 rnd_uptake_ind = mc_uptake/Niter;
+
+% Constraint satisfaction as a probability
+% ----------------------------------------
+cnst_prob = sum(mc_cnst)/Niter;
 
 % Process result
 % --------------
@@ -100,6 +117,7 @@ farm_payment  = sum(prices.*q.*uptake, 2);
 solution.prices        = prices;
 solution.fval          = sum(benefits);
 solution.spend         = sum(farm_payment);
+solution.cnst_prob     = cnst_prob;
 solution.uptake        = uptake;
 solution.uptake_ind    = rnd_uptake_ind;
 solution.option_choice = option_choice;

@@ -12,8 +12,9 @@ rng(23112010)
 % Model
 % -----
 payment_mechanism = 'fr_env';
-unscaled_budget = 2e9;
+unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
+bio_constraint = false;
 carbon_price_string = 'non_trade_central';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
@@ -24,14 +25,9 @@ markup = 1.15;
 
 % Paths to Data & Cplex Working Dir
 % ---------------------------------
-% data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
-% data_folder = 'D:\Documents\Data\Defra-ELMS\';
-% data_path = [data_folder, 'Script 2 (ELM Option Runs)/elm_data_', carbon_price_string, '.mat'];
-base_folder  = 'D:\myGitHub\defra-elms\';
-cplex_folder = [base_folder 'Cplex\'];
-data_folder  = [base_folder 'Data\'];
-
-input_data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
+cplex_folder = 'D:\myGitHub\defra-elms\Cplex\';
+data_folder  = 'D:\myGitHub\defra-elms\Data\';
+data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
 
 % Search Sample
 % -------------
@@ -42,7 +38,7 @@ if sample_size > 1000
 else
     eval(['matfile_name = ''prices_' budget_str '_' payment_mechanism '_' num2str(round(sample_size)) '_sample.mat'';']);
 end
-matfile_name = [base_folder matfile_name];
+matfile_name = [data_folder matfile_name];
 mfile = matfile(matfile_name, 'Writable', true);
 if ~isfile(matfile_name)
     mfile.prices_good   = [];
@@ -64,7 +60,7 @@ for iter = 1:Niter
     % (a) Load new sample of data
     % ---------------------------
     data_year = 1;    % year in which scheme run 
-    [b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, input_data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
+    [b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
     num_prices = length(price_vars);
     
     % (b) Scale quantities
@@ -137,7 +133,7 @@ sample_size = 'no';  % all data
 % (a) Load data
 % -------------
 data_year = 1;    
-[b, c, q, budget, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, input_data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
+[b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
 num_farmers = size(q, 1);
 num_prices  = size(q, 2);
 num_options = size(q, 3);

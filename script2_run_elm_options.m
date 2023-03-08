@@ -90,6 +90,8 @@ num_benefits = length(vars_benefits);
 vars_costs = {'farm', ...
               'forestry', ...
               'timber', ...
+              'grass', ...
+              'hay', ...              
               'rec'};
 num_costs  = length(vars_costs);
 
@@ -494,54 +496,59 @@ for option_i = 1:num_elm_options
     % Returned as negative benefit so invert sign for cost
     opp_cost_farm_npv = -opp_cost_farm_npv;
     
-    % 4.2 Forestry
-    % ------------
+    % 4.2 Forest
+    % ----------
     [benefit_forestry_npv, cost_forestry_npv] = fcn_calc_npv_forestry(baseline, es_forestry_all.(elm_option), MP);
+
+    % 4.3 Grassland
+    % -------------
+    sngrass_ha_chg = option_lcs_all.(elm_option).sngrass_ha - baseline_lcs.sngrass_ha;
+    [benefit_grass_npv, cost_grass_npv] = fcn_calc_npv_grass(MP, sngrass_ha_chg);
     
-    % 4.3 Greenhouse Gases
+    % 4.4 Greenhouse Gases
     % --------------------
     [benefit_ghg_farm_npv, benefit_ghg_dispfood_npv, benefit_ghg_forestry_npv, benefit_ghg_soil_forestry_npv] = fcn_calc_npv_ghg(baseline, es_agriculture_all.(elm_option), es_forestry_all.(elm_option), MP);
     benefit_ghg_npv = benefit_ghg_farm_npv + benefit_ghg_dispfood_npv + benefit_ghg_forestry_npv + benefit_ghg_soil_forestry_npv;
     
-    % 4.4 Recreation
+    % 4.5 Recreation
     % --------------
     [benefit_rec_npv, cost_rec_npv] = fcn_calc_npv_recreation_substitution(MP, elm_option, elm_ha.(elm_option), es_recreation_all);
     
-    % 4.5 Flooding
+    % 4.6 Flooding
     % ------------
     benefit_flood_npv = fcn_calc_npv_water_flood(MP, elm_option, es_flood_all);
     
-    % 4.6 Water Quality Treatment
+    % 4.7 Water Quality Treatment
     % ---------------------------
     [benefit_totn_npv, benefit_totp_npv] = fcn_calc_npv_water_quality(MP, elm_option, es_water_quality_all);
     
-    % 4.7 Water Quality Non-Use
+    % 4.8 Water Quality Non-Use
     % -------------------------
     benefit_water_non_use_npv = fcn_calc_npv_water_non_use(MP, elm_option, es_water_non_use_all);
  
-    % 4.8 Water Quality Recreation
+    % 4.9 Water Quality Recreation
     % ----------------------------
     benefit_water_rec_npv = fcn_calc_npv_water_recreation(MP, elm_option, es_water_rec_all);
           
-    % 4.9 Pollination: Horticultural Yields
-    % -------------------------------------
+    % 4.10 Pollination: Horticultural Yields
+    % --------------------------------------
     benefit_pollination_yield_npv = fcn_calc_npv_pollination(MP, elm_option, es_pollination_all);
         
-    % 4.10 Pollination: Wildflower Non-Use 
-    % -----------------------------------
+    % 4.11 Pollination: Wildflower Non-Use 
+    % ------------------------------------
     benefit_pollination_non_use_npv = fcn_calc_npv_pollination_non_use(MP, elm_option, es_non_use_pollination_all);
     
-    % 4.11 Non Use Habitat
+    % 4.12 Non Use Habitat
     % --------------------
     benefit_habitat_non_use_npv = fcn_calc_npv_non_use_habitat(MP, elm_option, es_non_use_habitat_all);
     
-    % 4.12 Biodiversity
+    % 4.13 Biodiversity
     % -----------------
     benefit_bio_npv = fcn_calc_npv_biodiversity(MP, elm_option, es_biodiversity_jncc_all, baseline, MP.biodiversity_unit_value);
     
     for t = scheme_years
         
-        % 4.13 Collect benefits for each scheme year
+        % 4.14 Collect benefits for each scheme year
         % ------------------------------------------
         benefits_t = [benefit_ghg_farm_npv(:,t), ...
                       benefit_ghg_dispfood_npv(:,t), ...
@@ -561,17 +568,19 @@ for option_i = 1:num_elm_options
         benefits.(elm_option)(:, t)          = nansum(benefits_t,2);
         benefits_table.(elm_option)(:, :, t) = benefits_t;    
         
-        % 4.14 Collect costs for each scheme year
+        % 4.15 Collect costs for each scheme year
         % ---------------------------------------
         costs_t = [opp_cost_farm_npv(:,t), ...
                    cost_forestry_npv(:,t), ...
                   -benefit_forestry_npv(:,t), ...
+                   cost_grass_npv(:,t), ...
+                  -benefit_grass_npv(:,t), ...
                    cost_rec_npv(:,t)];
         % Accumulate costs for each option and scheme year
         costs.(elm_option)(:, t)          = nansum(costs_t,2);
         costs_table.(elm_option)(:, :, t) = costs_t;    
         
-        % 4.15 Calculate benefit cost ratio using NPVs
+        % 4.16 Calculate benefit cost ratio using NPVs
         % --------------------------------------------
         % Note: Introduces NaN and Inf values by dividing by zero
         % all of these cases are where there is no farm_ha to start with
