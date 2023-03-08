@@ -14,7 +14,7 @@ rng(23112010)
 payment_mechanism = 'fr_env';
 unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
-bio_constraint = false;
+bio_constraint = 0.1;
 carbon_price_string = 'non_trade_central';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
@@ -194,6 +194,20 @@ cplex_options.logs = cplex_folder;
     
 [prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
 
+% prices1 = solution.prices.*prices_scale;
+% q1 = q./prices_scale;
+% prices_lb1 = prices1' * 0.75;
+% prices_ub1 = prices1' * 1.25;
+% prices_ub1(7:8) = prices1(7:8) * 2;
+% uptake1 = myfun_uptake(prices1, q, c, elm_options)';
+% uptake1 = uptake1(:)';
+% 
+% [prices2, uptake_sml2, fval2, exitflag2, exitmsg2] = MIP_fr_out(b, c, q1, budget, prices1, uptake1, prices_lb1, prices_ub1, cplex_options);
+% 
+% prices = prices2;
+% prices_lb = prices_lb1;
+% prices_ub = prices_ub1;
+
 
 % Process result
 % --------------
@@ -223,8 +237,8 @@ solution.farm_costs    = costs;
 solution.farm_benefits = benefits;
 solution.farm_payment  = farm_payment;
 solution.prices_locopt = prices_locopt;
-solution.prices_lb     = prices_lb;
-solution.prices_ub     = prices_ub;
+solution.prices_lb     = prices_lb ./ prices_scale';
+solution.prices_ub     = prices_ub ./ prices_scale';
 
 save(['solution_' budget_str '_' payment_mechanism '.mat'], 'solution');     
 

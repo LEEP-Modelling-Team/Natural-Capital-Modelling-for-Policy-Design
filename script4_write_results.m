@@ -9,7 +9,6 @@ rng(23112010)
 % Model
 % -----
 payment_mechanisms = {'fr_env', 'fr_es', 'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'};
-payment_mechanisms = {'oc_pay', 'fr_act'};
 unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
 carbon_price_string = 'non_trade_central';
