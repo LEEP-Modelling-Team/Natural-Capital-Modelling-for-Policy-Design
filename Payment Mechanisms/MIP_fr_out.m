@@ -24,7 +24,7 @@
 %                         o logs: folder in which to find warmstarts and
 %                                 write node logs
 
-function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, warm_start_prices, warm_start_uptake, prices_lb, prices_ub, cplex_options)
+function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, warm_start_prices, warm_start_uptake, prices_lb, prices_ub, cnst_data, cnst_target, cplex_options)
     
     % 1. Initialise
     % =============
@@ -67,6 +67,7 @@ function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget
         b(drop_cell_ind, :)    = [];
         c(drop_cell_ind, :)    = [];
         q(drop_cell_ind, :, :) = [];
+        cnst_data(:,:,drop_cell_ind) = [];
         surplus(drop_cell_ind, :)  = [];
         max_surplus(drop_cell_ind) = [];
         warm_start_uptake(repelem(drop_cell_ind, num_options, 1)') = [];
@@ -199,9 +200,25 @@ function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget
     Bu  = budget;
     if ~isempty(A),cplex.addRows(Bl, A, Bu); end        
     clear A_p A_u A_x A Bl Bu  
-
     
-    % 6.4 Additional Cuts
+    % 6.5 Biodiversity Constraints
+    % ----------------------------
+    % Increases in cell counts of species within each functional group must
+    % by greater than the target
+    if any(cnst_target)
+        num_groups = length(cnst_target); 
+        cnst_data = reshape(cnst_data, num_groups, []); % Reshape so have blocks of option to species group outcomes for each cell
+        A_p = sparse(num_groups, num_env_out);
+        A_u = sparse(num_groups, num_farmers);
+        A_x = cnst_data;
+        A  = [A_p, A_u, A_x];
+        Bl = cnst_target;
+        Bu = inf(num_groups,1);
+        if ~isempty(A),cplex.addRows(Bl, A, Bu); end
+        clear A A_p A_x Bl Bu    
+    end       
+    
+    % 6.6 Additional Cuts
     % -------------------
     %  Surplus must be zero if no option chosen
     %
@@ -229,6 +246,8 @@ function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget
 %     Bu  = zeros(num_farmers, 1);
 %     if ~isempty(A),cplex.addRows(Bl, A, Bu); end    
 %     clear A_p A_u A_x A Bl Bu  
+
+
 
 
     % 7. CPLEX call

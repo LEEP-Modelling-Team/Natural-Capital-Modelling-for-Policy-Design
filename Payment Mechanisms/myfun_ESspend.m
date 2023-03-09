@@ -1,4 +1,4 @@
-function x = myfun_ESspend(p, ES, C, bc, elm_option)
+function x = myfun_ESspend(p, ES, C, budget, elm_option)
 
     % Determine which option each farmer would prefer at these prices
     profit = zeros(length(C),length(elm_option)+1);
@@ -25,6 +25,6 @@ function x = myfun_ESspend(p, ES, C, bc, elm_option)
         spend_final(i) = spend(i,max_profit_col_idx(i));
     end
     
-    x = sum(spend_final) - bc;    
+    x = sum(spend_final) - budget;    
 
 end

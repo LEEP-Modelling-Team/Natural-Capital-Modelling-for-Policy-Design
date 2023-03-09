@@ -12,12 +12,13 @@ rng(23112010)
 % Model
 % -----
 payment_mechanism = 'fr_env';
-unscaled_budget = 1e9;
-urban_pct_limit = 0.5;
-bio_constraint = 0.1;
+unscaled_budget   = 1e9;
+urban_pct_limit   = 0.5;
+bio_constraint    = 0.01; 
 carbon_price_string = 'non_trade_central';
-drop_vars = {'habitat_non_use', 'biodiversity'};
-budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
+drop_vars   = {'habitat_non_use', 'biodiversity'};
+budget_str  = [num2str(round(unscaled_budget/1e9)) 'bill'];
+biocnst_str = [num2str(round(bio_constraint*100)) 'pct'];
 
 % Markup
 % ------
@@ -31,7 +32,7 @@ data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
 
 % Search Sample
 % -------------
-sample_size = 5000; % either 'no' or a number representing the sample size
+sample_size = 2000; % either 'no' or a number representing the sample size
 % On disk mat file to which to write price search results
 if sample_size > 1000
     eval(['matfile_name = ''prices_' budget_str '_' payment_mechanism '_' num2str(round(sample_size/1000)) 'k_sample.mat'';']);
@@ -60,7 +61,7 @@ for iter = 1:Niter
     % (a) Load new sample of data
     % ---------------------------
     data_year = 1;    % year in which scheme run 
-    [b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
+    [b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, data_year);
     num_prices = length(price_vars);
     
     % (b) Scale quantities
@@ -69,7 +70,7 @@ for iter = 1:Niter
     prices_scale(prices_scale==0) = NaN;
     prices_scale = nanstd(prices_scale);
     q = q ./ prices_scale;
-           
+               
     % (c) Linear search for maximum possible prices
     % ---------------------------------------------
     constraintfunc = @(p) mycon_ES(p, q, c, budget, elm_options);
@@ -79,20 +80,24 @@ for iter = 1:Niter
         prices_max(i) = fcn_lin_search(num_prices,i,start_rate,0.01,constraintfunc,q,c,budget,elm_options);
     end
     prices_min = zeros(size(prices_max));
-    
+        
     % (d) Find feasible prices
     % ------------------------  
     Nfeas = 40;
-    [prices_feasible, benefits_feasible] = fcn_find_feasible_prices(budget, b, c, q, elm_options, prices_min, prices_max, Nfeas);
+    [prices_feasible, benefits_feasible] = fcn_find_feasible_prices(budget, b, c, q, elm_options, prices_min, prices_max, cnst_data, cnst_target, Nfeas);
     if ~isempty(mfile.prices) || ~isempty(mfile.prices_good)
         prices_good = [mfile.prices; mfile.prices_good];
         Nfeas = size(prices_good,1);
         benefits_good = zeros(Nfeas,1);
         parfor i = 1:Nfeas
             benefits_good(i) = -myfun_ES(prices_good(i, :), q, c, b, elm_options);
-            if myfun_ESspend(prices_good(i,:), q, c, budget, elm_options) > 0 % overspend!
+%             if myfun_ESspend(prices_good(i,:), q, c, budget, elm_options) > 0 % overspend!
+%                 benefits_good(i) = 0;
+%             end
+            if any(mycon_budget_bio(prices_good(i,:), q, c, budget, elm_options, cnst_data, cnst_target) > 0) % constraint violation
                 benefits_good(i) = 0;
-            end
+            end            
+
         end   
         prices_feasible   = [prices_feasible;   prices_good(benefits_good>0,:)];
         benefits_feasible = [benefits_feasible; benefits_good(benefits_good>0,:)];
@@ -101,7 +106,7 @@ for iter = 1:Niter
     % (e) Find local optima prices
     % ----------------------------  
     Ngood = 50;
-    [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, b, c, q, elm_options, prices_max, prices_feasible, benefits_feasible, Ngood);
+    [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, b, c, q, elm_options, prices_max, prices_feasible, benefits_feasible, cnst_data, cnst_target, Ngood);
 
     Ngood = size(prices_locopt,1);
     mfile.prices_good(end+1:end+Ngood, 1:num_prices) = prices_locopt;
@@ -118,7 +123,7 @@ for iter = 1:Niter
     
     cplex_options.time = 1800;
     cplex_options.logs = cplex_folder;    
-    [prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
+    [prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cnst_data, cnst_target, cplex_options);
 
     mfile.prices(iter, 1:num_prices) = prices ./ prices_scale;
     mfile.benefits(iter,1)           = fval;
@@ -133,7 +138,7 @@ sample_size = 'no';  % all data
 % (a) Load data
 % -------------
 data_year = 1;    
-[b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
+[b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, data_year);
 num_farmers = size(q, 1);
 num_prices  = size(q, 2);
 num_options = size(q, 3);
@@ -157,15 +162,18 @@ prices_ub = max(prices)';
 % (d) Find feasible prices
 % ------------------------  
 Nfeas = 40;
-[prices_feasible, benefits_feasible] = fcn_find_feasible_prices(budget, b, c, q, elm_options, prices_lb'*0.75, prices_ub'*1.25, Nfeas);
+[prices_feasible, benefits_feasible] = fcn_find_feasible_prices(budget, b, c, q, elm_options, prices_lb'*0.75, prices_ub'*1.25, cnst_data, cnst_target, Nfeas);
 prices_good = prices;
 Nfeas = size(prices_good,1);
 benefits_good = zeros(Nfeas,1);
 parfor i = 1:Nfeas
     benefits_good(i) = -myfun_ES(prices_good(i, :), q, c, b, elm_options);
-    if myfun_ESspend(prices_good(i,:), q, c, budget, elm_options) > 0 % overspend!
+%     if myfun_ESspend(prices_good(i,:), q, c, budget, elm_options) > 0 % overspend!
+%         benefits_good(i) = 0;
+%     end
+    if any(mycon_budget_bio(prices_good(i,:), q, c, budget, elm_options, cnst_data, cnst_target) > 0) % constraint violation
         benefits_good(i) = 0;
-    end
+    end    
 end   
 prices_feasible   = [prices_feasible;   prices_good(benefits_good>0,:)];
 benefits_feasible = [benefits_feasible; benefits_good(benefits_good>0,:)];
@@ -176,7 +184,7 @@ benefits_feasible = [benefits_feasible; benefits_good(benefits_good>0,:)];
 prices_lb = min(prices_feasible);
 prices_ub = max(prices_feasible);
 Ngood = 50;
-[prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, b, c, q, elm_options, prices_ub*1.25, prices_feasible, benefits_feasible, Ngood);
+[prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, b, c, q, elm_options, prices_ub*1.25, prices_feasible, benefits_feasible, cnst_data, cnst_target, Ngood);
 
 
 % (e) MIP for global optimum
@@ -192,7 +200,7 @@ uptake_locopt = uptake_locopt(:)';
 cplex_options.time = 3600;
 cplex_options.logs = cplex_folder;   
     
-[prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cplex_options);
+[prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_out(b, c, q, budget, prices_locopt(1, :), uptake_locopt, prices_lb, prices_ub, cnst_data, cnst_target, cplex_options);
 
 % prices1 = solution.prices.*prices_scale;
 % q1 = q./prices_scale;
@@ -202,7 +210,7 @@ cplex_options.logs = cplex_folder;
 % uptake1 = myfun_uptake(prices1, q, c, elm_options)';
 % uptake1 = uptake1(:)';
 % 
-% [prices2, uptake_sml2, fval2, exitflag2, exitmsg2] = MIP_fr_out(b, c, q1, budget, prices1, uptake1, prices_lb1, prices_ub1, cplex_options);
+% [prices2, uptake_sml2, fval2, exitflag2, exitmsg2] = MIP_fr_out(b, c, q1, budget, prices1, uptake1, prices_lb1, prices_ub1, cnst_data, cnst_target, cplex_options);
 % 
 % prices = prices2;
 % prices_lb = prices_lb1;
@@ -240,5 +248,8 @@ solution.prices_locopt = prices_locopt;
 solution.prices_lb     = prices_lb ./ prices_scale';
 solution.prices_ub     = prices_ub ./ prices_scale';
 
-save(['solution_' budget_str '_' payment_mechanism '.mat'], 'solution');     
-
+if bio_constraint > 0    
+    save(['solution_' biocnst_str '_' budget_str '_' payment_mechanism '.mat'], 'solution'); 
+else
+    save(['solution_' budget_str '_' payment_mechanism '.mat'], 'solution');     
+end

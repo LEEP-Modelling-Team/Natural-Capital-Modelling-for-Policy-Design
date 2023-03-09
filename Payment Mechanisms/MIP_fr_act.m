@@ -19,7 +19,7 @@
 %                         o logs: folder in which to find warmstarts and
 %                                 write node logs
 
-function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, bio_constraint, cnst_data, cnst_target, cplex_options)
+function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, cnst_data, cnst_target, cplex_options)
 
 
     % 1. Initialise
@@ -264,7 +264,7 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
 %         if ~isempty(A),cplex.addRows(Bl, A, Bu); end
 %         clear A A_p A_x Bl Bu    
 %     end
-    if bio_constraint
+    if any(cnst_target)
         num_groups = length(cnst_target); 
         cnst_data = reshape(cnst_data, length(cnst_target), []); % Reshape so have blocks of option to species group outcomes for each cell
         A_p = sparse(num_groups, num_options);

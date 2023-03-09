@@ -4,9 +4,9 @@
 % Purpose
 % -------
 %  Search price space to find a set of feasible prices that do not break
-%  the budget constraint
+%  the constraints (budget & biodiverisity targets)
 
-function [prices_feasible, benefits_feasible] = fcn_find_feasible_prices(budget, benefits, costs, q, elm_options, prices_min, prices_max, Nfeas)
+function [prices_feasible, benefits_feasible] = fcn_find_feasible_prices(budget, benefits, costs, q, elm_options, prices_min, prices_max, cnst_data, cnst_target, Nfeas)
 
     % fprintf('\n  Rough Search of Parameter Space:');
     % fprintf('\n  ------------------------------- \n');
@@ -23,7 +23,7 @@ function [prices_feasible, benefits_feasible] = fcn_find_feasible_prices(budget,
     benefits_test = nan(N,1);
     parfor i = 1:N
         benefits_test(i) = -myfun_ES(prices_test(i, :), q, costs, benefits, elm_options);
-        if myfun_ESspend(prices_test(i,:), q, costs, budget, elm_options) > 0 % overspend!
+        if any(mycon_budget_bio(prices_test(i,:), q, costs, budget, elm_options, cnst_data, cnst_target) > 0) % constraint violation
             benefits_test(i) = 0;
         end
     end
