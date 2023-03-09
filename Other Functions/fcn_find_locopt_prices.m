@@ -5,7 +5,7 @@
 % -------
 %  Search around starting feasible prices for local optimal prices
 
-function [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, benefits, costs, q, elm_options, prices_max, prices_feas, benefits_feas, Ngood)
+function [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, benefits, costs, q, elm_options, prices_max, prices_feas, benefits_feas, cnst_data, cnst_target, Ngood)
 
     
     % fprintf('\n  Refine Search in Feasible Parameter Space: ');
@@ -23,11 +23,11 @@ function [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, benef
         tic       
         % (1) Refine search around feasible starting point
         % ------------------------------------------------  
-        [prices_good, benefits_good] = search_prices_latinHC(N, prices_feas, benefits_feas, Nq, prices_max, Ngood, q, costs, benefits, elm_options, budget);    
+        [prices_good, benefits_good] = search_prices_latinHC(N, prices_feas, benefits_feas, Nq, prices_max, Ngood, q, costs, benefits, elm_options, budget, cnst_data, cnst_target);    
 
         % (2) Precise search around best parameters from grid search
         % ----------------------------------------------------------
-        [prices_locopt, benefits_locopt] = search_prices_nonlin_opt(prices_good, benefits_good, prices_max, elm_options, q, costs, benefits, budget);
+        [prices_locopt, benefits_locopt] = search_prices_nonlin_opt(prices_good, benefits_good, prices_max, elm_options, q, costs, benefits, budget, cnst_data, cnst_target);
         tSolve = toc;
                
         prices_feas   = prices_locopt;
@@ -64,9 +64,9 @@ function [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, benef
 end
 
 
-function [good_rates, good_benefits] = search_prices_latinHC(Ngsearch, prices_feas, benefits_feas, num_env_out, max_rates, num_good, env_outs, costs, benefits, elm_options, budget)
+function [good_rates, good_benefits] = search_prices_latinHC(Ngsearch, prices_feas, benefits_feas, num_env_out, max_rates, num_good, env_outs, costs, benefits, elm_options, budget, cnst_data, cnst_target)
     
-    constraintfunc = @(p) mycon_ES(p, env_outs, costs, budget, elm_options);
+    % constraintfunc = @(p) mycon_ES(p, env_outs, costs, budget, elm_options);
     rough_rates    = prices_feas;
     rough_benefits = benefits_feas;
     
@@ -90,7 +90,7 @@ function [good_rates, good_benefits] = search_prices_latinHC(Ngsearch, prices_fe
         % fprintf('   Feasible price: %.0f \n', jj);  
         parfor i = 1:Ngsearch
             test_benefits(i) = -myfun_ES(test_rates(i, :), env_outs, costs, benefits, elm_options);
-            if myfun_ESspend(test_rates(i,:), env_outs, costs, budget, elm_options) > 0 % overspend!
+            if any(mycon_budget_bio(test_rates(i,:), env_outs, costs, budget, elm_options, cnst_data, cnst_target) > 0) % constraint violation
                 test_benefits(i) = 0;
             end
         end       
@@ -119,7 +119,7 @@ function [good_rates, good_benefits] = search_prices_latinHC(Ngsearch, prices_fe
 end
 
 
-function [best_rates, best_benefits] = search_prices_nonlin_opt(good_rates, good_benefits, max_rates, elm_options, env_outs, costs, benefits, budget)
+function [best_rates, best_benefits] = search_prices_nonlin_opt(good_rates, good_benefits, max_rates, elm_options, env_outs, costs, benefits, budget, cnst_data, cnst_target)
 
     %fprintf('\n  Precise Minimisation from Best Parameters: \n  ------------------------------------------ \n');
     num_env_out = size(env_outs,2);
@@ -136,7 +136,8 @@ function [best_rates, best_benefits] = search_prices_nonlin_opt(good_rates, good
     max_rates_org(isnan(max_rates_org)) = 0;
 
     benefitfunc    = @(p) myfun_ES(p, env_outs_norm, costs, benefits, elm_options);
-    constraintfunc = @(p) mycon_ES(p, env_outs_norm, costs, budget,   elm_options);
+    % constraintfunc = @(p) mycon_ES(p, env_outs_norm, costs, budget,   elm_options);
+    constraintfunc = @(p) mycon_budget_bio(p, env_outs_norm, costs, budget, elm_options, cnst_data, cnst_target);
     options = optimoptions('patternsearch', 'Display', 'none');
 
 

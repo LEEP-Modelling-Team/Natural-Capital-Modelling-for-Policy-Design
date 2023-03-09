@@ -13,10 +13,11 @@ rng(23112010)
 payment_mechanism = 'fr_act';
 unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
-bio_constraint = false;
+bio_constraint = 0.1;
 carbon_price_string = 'non_trade_central';
 drop_vars = {'habitat_non_use', 'biodiversity'};
-budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
+budget_str  = [num2str(round(unscaled_budget/1e9)) 'bill'];
+biocnst_str = [num2str(round(bio_constraint*100)) 'pct'];
 
 % Markup
 % ------
@@ -24,9 +25,6 @@ markup = 1.15;
 
 % Paths to Data & Cplex Working Dir
 % ---------------------------------
-% data_folder = 'D:\mydata\Research\Projects (Land Use)\Defra_ELMS\Data\';
-% data_folder = 'D:\Documents\Data\Defra-ELMS\';
-% data_path = [data_folder, 'Script 2 (ELM Option Runs)/elm_data_', carbon_price_string, '.mat'];
 cplex_folder = 'D:\myGitHub\defra-elms\Cplex\';
 data_folder  = 'D:\myGitHub\defra-elms\Data\';
 data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
@@ -39,12 +37,11 @@ data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
 % -------------
 data_year = 1;    
 sample_size = 'no';  % all data
-[b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year);
+[b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, data_year);
 num_prices  = length(price_vars);
 num_options = size(b,2);
 num_farmers = size(b,1);
 
-cnst_target = floor(cnst_target/5);
 
 % (b) Reduce problem size
 % -----------------------
@@ -75,9 +72,9 @@ cnst_data(:,:,excluded_cells) = [];
 
 % 3. MIP for Global Optimal Prices
 % --------------------------------
-cplex_options.time = 1800;
+cplex_options.time = 2000;
 cplex_options.logs = cplex_folder;  
-[prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, bio_constraint, cnst_data, cnst_target, cplex_options);
+[prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, cnst_data, cnst_target, cplex_options);
 
 % This gives slightly different result though putting prices back through
 % benefits calculator shows it is wrong ...
@@ -99,8 +96,8 @@ benefits_sml      = sum(b.*uptake_sml, 2);
 costs_sml         = sum(c.*uptake_sml, 2);
 farm_payment_sml  = sum(prices.*q.*uptake_sml, 2);
 
-% Rexpand to full cell list
-% -------------------------
+% Re-expand to full cell list
+% ---------------------------
 uptake        = zeros(num_farmers, num_options);
 uptake_ind    = zeros(num_farmers, 1);
 option_choice = zeros(num_farmers, 1);
@@ -131,5 +128,8 @@ solution.farm_costs    = costs;
 solution.farm_benefits = benefits;
 solution.farm_payment  = farm_payment;
 
-save(['solution_' budget_str '_' payment_mechanism '.mat'], 'solution');                                                                      
-
+if bio_constraint > 0    
+    save(['solution_' biocnst_str '_' budget_str '_' payment_mechanism '.mat'], 'solution'); 
+else
+    save(['solution_' budget_str '_' payment_mechanism '.mat'], 'solution');     
+end

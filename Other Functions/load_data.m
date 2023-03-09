@@ -1,4 +1,4 @@
-function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2kid] = load_data(sample_num, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, data_year)
+function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2kid] = load_data(sample_num, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, data_year)
 
     % (1) Set up
     %  ==========
@@ -152,7 +152,9 @@ function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2
         cnst_data(:, :, k) = biodiversity_constraints.(elm_options{k}).data_20(farmer_sample_ind, :);
     end    
     cnst_data = permute(cnst_data, [2,3,1]);   % reorientate so rows: sp_grp, cols: option, depth: cells 
-    % Target is for an absolute increase in national biodiversity
-    cnst_target = biodiversity_constraints.targets_20;   
+    % Target is for an absolute increase in national biodiversity defined 
+    % as a percentage of current levels where that percent is in
+    % bio_constraint. If bio_constraint then all cnst_target go to zero.
+    cnst_target = biodiversity_constraints.targets_20 * bio_constraint;   
     
 end

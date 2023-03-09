@@ -150,7 +150,6 @@ function MP = fcn_set_model_parameters(conn, json, server_flag)
     % Biodiversity models
     % -------------------
     MP.biodiversity_unit_value = 0;			% turn biodiversity benefits off
-    MP.bio_pct_increase_target = 0.10;
     % MP.biodiversity_unit_value = 500;
     
         

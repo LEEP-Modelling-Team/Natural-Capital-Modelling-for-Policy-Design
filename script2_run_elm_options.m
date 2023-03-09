@@ -725,16 +725,17 @@ biodiversity_constraints.names_grp = [names_poll_grp; names_prio_grp];
     
 % 6.3 Target Counts by Groups
 % ---------------------------
-%  Quantity of presence that represents a MP.bio_pct_increase_target% increase for species
-%  group over baseline in each period
-biodiversity_constraints.targets_20 = [ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.pollinator_presence_20 * dmat_poll)), ...
-                                       ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.priority_presence_20 * dmat_prio))]';
-biodiversity_constraints.targets_30 = [ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.pollinator_presence_30 * dmat_poll)), ...
-                                       ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.priority_presence_30 * dmat_prio))]';
-biodiversity_constraints.targets_40 = [ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.pollinator_presence_40 * dmat_poll)), ...
-                                       ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.priority_presence_40 * dmat_prio))]';
-biodiversity_constraints.targets_50 = [ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.pollinator_presence_50 * dmat_poll)), ...
-                                       ceil(MP.bio_pct_increase_target*sum(baseline.es_biodiversity_ucl.priority_presence_50 * dmat_prio))]';
+%  Quantity of presence in each species group in the baseline. We use this
+%  to determine targets e.g. a 5% biodiversity target is 5% of these
+%  numbers
+biodiversity_constraints.targets_20 = [ceil(sum(baseline.es_biodiversity_ucl.pollinator_presence_20 * dmat_poll)), ...
+                                       ceil(sum(baseline.es_biodiversity_ucl.priority_presence_20 * dmat_prio))]';
+biodiversity_constraints.targets_30 = [ceil(sum(baseline.es_biodiversity_ucl.pollinator_presence_30 * dmat_poll)), ...
+                                       ceil(sum(baseline.es_biodiversity_ucl.priority_presence_30 * dmat_prio))]';
+biodiversity_constraints.targets_40 = [ceil(sum(baseline.es_biodiversity_ucl.pollinator_presence_40 * dmat_poll)), ...
+                                       ceil(sum(baseline.es_biodiversity_ucl.priority_presence_40 * dmat_prio))]';
+biodiversity_constraints.targets_50 = [ceil(sum(baseline.es_biodiversity_ucl.pollinator_presence_50 * dmat_poll)), ...
+                                       ceil(sum(baseline.es_biodiversity_ucl.priority_presence_50 * dmat_prio))]';
     
 % 6.4 Additions to Presence of Groups by each land use change
 % -----------------------------------------------------------
@@ -754,6 +755,8 @@ for option_i = 1:num_elm_options
                                                      (es_biodiversity_ucl_all.(elm_option).priority_presence_50   - baseline.es_biodiversity_ucl.priority_presence_50) * dmat_prio];
 end
     
+save([MP.data_out 'elm_data_', MP.carbon_price_str, '.mat'], 'biodiversity_constraints', '-append');
+
 
 % 7. Save results to .mat file
 % ----------------------------
