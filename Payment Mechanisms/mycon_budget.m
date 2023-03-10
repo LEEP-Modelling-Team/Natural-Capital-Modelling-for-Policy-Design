@@ -1,4 +1,4 @@
-function [c, ceq] = mycon_ES(p, ES, C, budget, elm_option, cnst_data, cnst_target, bio_constraint)
+function [c, ceq] = mycon_budget(p, ES, C, budget, elm_option)
 
     % Determine which option each farmer would prefer at these prices
     profit = zeros(length(C), length(elm_option) + 1);

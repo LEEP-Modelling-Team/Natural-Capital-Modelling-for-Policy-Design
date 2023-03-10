@@ -13,7 +13,7 @@ rng(23112010)
 payment_mechanism = 'fr_act';
 unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
-bio_constraint = 0.1;
+bio_constraint = 0.10;
 carbon_price_string = 'non_trade_central';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 budget_str  = [num2str(round(unscaled_budget/1e9)) 'bill'];
@@ -72,7 +72,7 @@ cnst_data(:,:,excluded_cells) = [];
 
 % 3. MIP for Global Optimal Prices
 % --------------------------------
-cplex_options.time = 2000;
+cplex_options.time = 15000;
 cplex_options.logs = cplex_folder;  
 [prices, uptake_sml, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, cnst_data, cnst_target, cplex_options);
 

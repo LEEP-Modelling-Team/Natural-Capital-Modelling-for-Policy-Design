@@ -11,7 +11,7 @@ function [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, benef
     % fprintf('\n  Refine Search in Feasible Parameter Space: ');
     % fprintf('\n  ----------------------------------------- \n');  
     
-    N = 1000;
+    N = 500000;
     Nq = size(q,2);
     
     old_best_benefit = -inf;
@@ -24,7 +24,11 @@ function [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, benef
         % (1) Refine search around feasible starting point
         % ------------------------------------------------  
         [prices_good, benefits_good] = search_prices_latinHC(N, prices_feas, benefits_feas, Nq, prices_max, Ngood, q, costs, benefits, elm_options, budget, cnst_data, cnst_target);    
-
+        if isempty(prices_good)
+            prices_good   = zeros(1, Nq);
+            benefits_good = 0;
+        end
+                
         % (2) Precise search around best parameters from grid search
         % ----------------------------------------------------------
         [prices_locopt, benefits_locopt] = search_prices_nonlin_opt(prices_good, benefits_good, prices_max, elm_options, q, costs, benefits, budget, cnst_data, cnst_target);
@@ -33,16 +37,16 @@ function [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, benef
         prices_feas   = prices_locopt;
         benefits_feas = benefits_locopt;
         
-        new_best_benefit = max(benefits_locopt);
-        fprintf(['      benefits:       £' sprintf('%s', num2sepstr(new_best_benefit,  '%.0f')) '    %0.2f secs\n'], tSolve);  
+        c = max(benefits_locopt);
+        fprintf(['      benefits:       £' sprintf('%s', num2sepstr(c,  '%.0f')) '    %0.2f secs\n'], tSolve);  
         
-        if old_best_benefit == new_best_benefit
+        if old_best_benefit == c
             search_cnt = search_cnt + 1;
         else
             search_cnt = 0;
         end
         
-        old_best_benefit = new_best_benefit;
+        old_best_benefit = c;
         
     end
     
@@ -55,7 +59,7 @@ function [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, benef
     benefit_best = benefits_locopt(max_best_benefits_idx,:);
 
     benefitfunc    = @(p) myfun_ES(p, q, costs, benefits, elm_options);
-    constraintfunc = @(p) mycon_ES(p, q, costs, budget,   elm_options);
+    constraintfunc = @(p) mycon_budget(p, q, costs, budget,   elm_options);
 
     fprintf(['      benefits:       £' sprintf('%s', num2sepstr(-benefitfunc(prices_best),   '%.0f')) '\n']);    
     fprintf(['      budget surplus: £' sprintf('%s', num2sepstr(constraintfunc(prices_best),'%.0f')) '\n']);    
@@ -66,7 +70,7 @@ end
 
 function [good_rates, good_benefits] = search_prices_latinHC(Ngsearch, prices_feas, benefits_feas, num_env_out, max_rates, num_good, env_outs, costs, benefits, elm_options, budget, cnst_data, cnst_target)
     
-    % constraintfunc = @(p) mycon_ES(p, env_outs, costs, budget, elm_options);
+    % constraintfunc = @(p) mycon_budget(p, env_outs, costs, budget, elm_options);
     rough_rates    = prices_feas;
     rough_benefits = benefits_feas;
     
@@ -136,7 +140,7 @@ function [best_rates, best_benefits] = search_prices_nonlin_opt(good_rates, good
     max_rates_org(isnan(max_rates_org)) = 0;
 
     benefitfunc    = @(p) myfun_ES(p, env_outs_norm, costs, benefits, elm_options);
-    % constraintfunc = @(p) mycon_ES(p, env_outs_norm, costs, budget,   elm_options);
+    % constraintfunc = @(p) mycon_budget(p, env_outs_norm, costs, budget,   elm_options);
     constraintfunc = @(p) mycon_budget_bio(p, env_outs_norm, costs, budget, elm_options, cnst_data, cnst_target);
     options = optimoptions('patternsearch', 'Display', 'none');
 

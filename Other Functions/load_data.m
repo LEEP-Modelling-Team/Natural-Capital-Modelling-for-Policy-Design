@@ -154,7 +154,9 @@ function [b, c, q, budget, cnst_data, cnst_target, elm_options, vars_price, new2
     cnst_data = permute(cnst_data, [2,3,1]);   % reorientate so rows: sp_grp, cols: option, depth: cells 
     % Target is for an absolute increase in national biodiversity defined 
     % as a percentage of current levels where that percent is in
-    % bio_constraint. If bio_constraint then all cnst_target go to zero.
-    cnst_target = biodiversity_constraints.targets_20 * bio_constraint;   
+    % bio_constraint. If bio_constraint = 0 then all cnst_target go to zero.
+    % Constraints are scaled to the size of the sample.
+    cnst_target = biodiversity_constraints.targets_20/cell_info.ncells * sample_num;
+    cnst_target = cnst_target * bio_constraint;   
     
 end

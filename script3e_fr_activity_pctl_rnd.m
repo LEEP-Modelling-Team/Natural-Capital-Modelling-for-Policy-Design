@@ -13,7 +13,7 @@ rng(23112010)
 payment_mechanism = 'fr_act_pctl_rnd';
 unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
-bio_constraint = 0.05;
+bio_constraint = 0.15;
 carbon_price_string = 'non_trade_central';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
