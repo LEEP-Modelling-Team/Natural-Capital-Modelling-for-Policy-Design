@@ -124,9 +124,9 @@ end
 is_solution = exist("solution");
 if is_solution == 1
     if bio_constraint > 0    
-        save(['repr_solution_' biocnst_str '_' budget_str '_' payment_mechanism '.mat'], 'solution'); 
+        save([data_folder 'repr_solution_' biocnst_str '_' budget_str '_' payment_mechanism '.mat'], 'solution'); 
     else
-        save(['repr_solution_' budget_str '_' payment_mechanism '.mat'], 'solution');     
+        save([data_folder 'repr_solution_' budget_str '_' payment_mechanism '.mat'], 'solution');     
     end
 else
     fprintf("Representative solution not found from %d samples. Increase the value of 'Niter'\n", Niter);
