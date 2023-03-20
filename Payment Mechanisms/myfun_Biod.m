@@ -1,4 +1,4 @@
-function f = myfun_Biod(p, q, costs, benefits, elm_option, cnst_data, cnst_target)
+function f = myfun_Biod(p, q, costs, elm_option, cnst_data, cnst_target)
 
     % Calculate uptake
     uptake = myfun_uptake(p, q, costs, elm_option);
@@ -11,8 +11,12 @@ function f = myfun_Biod(p, q, costs, benefits, elm_option, cnst_data, cnst_targe
     end
 
     % objective function
-    alpha = 20;
-    f = sum((cnst_target - spgrp_chg).^2) + ...
-        alpha * sum(max([(cnst_target - spgrp_chg), zeros(num_spgrp,1)], [], 2).^2);
+    alpha = 0;
+    f = alpha * sum((cnst_target - spgrp_chg).^2) + ...
+        sum(max([(cnst_target - spgrp_chg), zeros(num_spgrp,1)], [], 2).^2);
+  
+    %fprintf('%s\n', strjoin(num2sepstr(p,'% 3.5f'), ' '));
+    %fprintf('%s\n', strjoin(num2sepstr(f,'% 3.5f'), ' '));
+    % fprintf('%s\n', num2sepstr(f,'% 12.2f'));    
     
 end

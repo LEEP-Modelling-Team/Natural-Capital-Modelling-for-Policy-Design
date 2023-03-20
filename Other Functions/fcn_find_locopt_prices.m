@@ -11,7 +11,7 @@ function [prices_locopt, benefits_locopt] = fcn_find_locopt_prices(budget, benef
     % fprintf('\n  Refine Search in Feasible Parameter Space: ');
     % fprintf('\n  ----------------------------------------- \n');  
     
-    N = 500000;
+    N = 10000;
     Nq = size(q,2);
     
     old_best_benefit = -inf;

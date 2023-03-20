@@ -12,6 +12,9 @@
 %    c                  [num_farmers x num_options] costs of each option 
 %    q                  [num_farmers x num_options x num_options] quantities of env outs from each option  
 %    budget             Maximum spend   
+%    lu_data            [num_farmers x num_options] indicator of which options refer to the land use in this observation (all for cell, ag/grass for parcel) 
+%    warm_start_prices  [1 x num_env_out] vector of best starting prices
+%    warm_start_uptake  [1 x num_farmers*num_options] vector of uptake at warm_start_prices 
 %    prices_lb          [1 x num_options] vector of lower bound on prices
 %    prices_ub          [1 x num_options] vector of upper bound on prices
 %    cplex_options      structure with cplex options
@@ -19,7 +22,7 @@
 %                         o logs: folder in which to find warmstarts and
 %                                 write node logs
 
-function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, prices_lb, prices_ub, cnst_data, cnst_target, cplex_options)
+function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget, lu_data, warm_start_prices, warm_start_uptake, prices_lb, prices_ub, cnst_data, cnst_target, cplex_options)
 
 
     % 1. Initialise
@@ -44,7 +47,7 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
     cplex.Param.mip.tolerances.mipgap.Cur = 0;
     cplex.Param.mip.tolerances.absmipgap.Cur = 0;
     cplex.Param.timelimit.Cur = cplex_options.time;
-    cplex.Param.workdir.Cur = cplex_options.logs;
+    cplex.Param.workdir.Cur   = cplex_options.logs;
     %  cplex.DisplayFunc = '';   
     
     % 1.2 Constants
@@ -84,8 +87,10 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
     
     % 3. Bounds for Choice Variables
     % ==============================
+    farm_option_ub = lu_data';
+    farm_option_ub = farm_option_ub(:);
     lb = [prices_lb; sparse(num_farmers + num_options * num_farmers, 1)];
-    ub = [prices_ub; repelem(budget, num_farmers, 1); ones((num_options*num_farmers), 1)];     
+    ub = [prices_ub; repelem(budget, num_farmers, 1); farm_option_ub];     
     
 
     % 4. Cost vector
@@ -277,6 +282,18 @@ function [prices, uptake, fval, exitflag, exitmsg] = MIP_fr_act(b, c, q, budget,
         clear A A_p A_x Bl Bu    
     end
     
+    
+    % 2.1 Warm start
+    % --------------
+    if ~isempty(warm_start_prices)
+        sln = [warm_start_prices warm_start_uptake];
+        idx = [1:num_options num_options+num_farmers+1:num_options+num_farmers+num_options*num_farmers];
+        idx = idx - 1;            
+        filename = [cplex_options.logs 'warmstart.mst'];
+        probname = 'elms_lp';
+        fcn_write_warmstart(sln', idx', filename, probname);
+        cplex.readMipStart(filename);
+    end
     
     
     % 3. SOLVE

@@ -1,30 +1,34 @@
-function [c, ceq] = mycon_budget(p, ES, C, budget, elm_option)
+function [c, ceq] = mycon_budget(p, q, cst, budget, elm_options)
+
+    num_farmers = length(cst);
+    num_options = length(elm_options);
 
     % Determine which option each farmer would prefer at these prices
-    profit = zeros(length(C), length(elm_option) + 1);
-    spend  = zeros(length(C), length(elm_option) + 1);
+    profit = zeros(num_farmers, num_options + 1);
+    spend  = zeros(num_farmers, num_options + 1);
 	
     % Evaluate profit and spend for each option and farmer
-    if isstruct(ES) 
-        for i = 1:length(elm_option)
-            profit(:, i + 1) = p * ES.(elm_option{i})' - C(:, i)';
-            spend(:, i + 1)  = p * ES.(elm_option{i})';
+    if isstruct(q) 
+        for i = 1:num_options
+            profit(:, i + 1) = p * q.(elm_options{i})' - cst(:, i)';
+            spend(:, i + 1)  = p * q.(elm_options{i})';
+        end
+    elseif ndims(q) > 2
+        for i = 1:num_options
+            profit(:, i + 1) = p * q(:, :, i)' - cst(:, i)';
+            spend(:, i + 1)  = p * q(:, :, i)';
         end
     else
-        for i = 1:length(elm_option)
-            profit(:, i + 1) = p * ES(:, :, i)' - C(:, i)';
-            spend(:, i + 1)  = p * ES(:, :, i)';
-        end
+        profit(:, 2:end) = p .* q - cst;
+        spend(:, 2:end)  = p .* q;        
     end
+    
 	% Find which option gives each farmer maximum profit
 	% They will choose 'do nothing' if all profits are negative
-    [~, Aind] = max(profit, [], 2);
+    [~, max_profit_col_idx] = max(profit, [], 2);
     
 	% Calculate spend for each farmer under this option uptake
-    spend_final = zeros(size(C, 1), 1);
-    for i = 1:size(C, 1)
-        spend_final(i) = spend(i, Aind(i));
-    end   
+    spend_final = spend(sub2ind(size(spend), (1:num_farmers)', max_profit_col_idx));
     
 	% Calculate margin (total spend - budget)
     c   = sum(spend_final) - budget;

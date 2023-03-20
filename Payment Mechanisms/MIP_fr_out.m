@@ -15,6 +15,7 @@
 %    c                  [num_farmers x num_options] costs of each option 
 %    q                  [num_farmers x num_env_out x num_options] quantities of env outs from each option  
 %    budget             Maximum spend   
+%    lu_data            [num_farmers x num_options] indicator of which options refer to the land use in this observation (all for cell, ag/grass for parcel) 
 %    warm_start_prices  [1 x num_env_out] vector of best starting prices
 %    warm_start_uptake  [1 x num_farmers*num_options] vector of uptake at warm_start_prices 
 %    prices_lb          [1 x num_env_out] vector of lower bount on prices
@@ -24,7 +25,7 @@
 %                         o logs: folder in which to find warmstarts and
 %                                 write node logs
 
-function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, warm_start_prices, warm_start_uptake, prices_lb, prices_ub, cnst_data, cnst_target, cplex_options)
+function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget, lu_data, warm_start_prices, warm_start_uptake, prices_lb, prices_ub, cnst_data, cnst_target, byparcel, cplex_options)
     
     % 1. Initialise
     % =============
@@ -67,6 +68,7 @@ function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget
         b(drop_cell_ind, :)    = [];
         c(drop_cell_ind, :)    = [];
         q(drop_cell_ind, :, :) = [];
+        lu_data(drop_cell_ind, :)    = [];
         cnst_data(:,:,drop_cell_ind) = [];
         surplus(drop_cell_ind, :)  = [];
         max_surplus(drop_cell_ind) = [];
@@ -96,10 +98,11 @@ function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget
     
     % 3. Bounds for Choice Variables
     % ==============================
+    farm_option_ub = lu_data';
+    farm_option_ub = farm_option_ub(:);
     lb    = [prices_lb; sparse(num_farmers + num_options * num_farmers, 1)];
-    ub    = [prices_ub; repelem(budget, num_farmers, 1); ones((num_options*num_farmers), 1)];     
-    % lb    = [sparse(num_env_out + num_farmers + num_options * num_farmers, 1)];
-    % ub    = [repelem(budget, num_env_out + num_farmers, 1); ones((num_options*num_farmers), 1)];     
+    ub    = [prices_ub; repelem(budget, num_farmers, 1); farm_option_ub];     
+   
     
     % 4. Cost vector
     % ==============    
@@ -259,10 +262,11 @@ function [prices, uptake, fval, exitflag, exitmsg] =  MIP_fr_out(b, c, q, budget
         sln = [warm_start_prices warm_start_uptake];
         idx = [1:num_env_out num_env_out+num_farmers+1:num_env_out+num_farmers+num_options*num_farmers];
         idx = idx - 1;            
-        filename = 'warmstart.mst';
+        filename = [cplex_options.logs 'warmstart.mst'];
         probname = 'elms_lp';
         fcn_write_warmstart(sln', idx', filename, probname);
-        cplex.readMipStart('warmstart.mst');
+        cplex.readMipStart(filename);
+        cplex.Param.mip.limits.repairtries.Cur = 500; % set the number of MIPstart repair attempts to 10
     end
     
     % 7.2 Solve

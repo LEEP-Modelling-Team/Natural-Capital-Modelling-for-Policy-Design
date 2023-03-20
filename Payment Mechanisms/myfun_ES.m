@@ -1,20 +1,21 @@
-function f = myfun_ES(p, q, costs, benefits, elm_option)
+function f = myfun_ES(p, q, c, b, elm_options)
+
+    num_farmers = length(c);
+    num_options = length(elm_options);
 
     % Determine which option each farmer would prefer at these prices
-    profit  = zeros(length(costs), length(elm_option) + 1);
-    benefit = zeros(length(costs), length(elm_option) + 1);
-    
-    % Evaluate profit & cost for each option 
-    % Evaluate profit and spend for each option and farmer
+    profit  = zeros(num_farmers, num_options+1);
     if isstruct(q) 
-        for i = 1:length(elm_option)
-            profit(:, i + 1)  = p * q.(elm_option{i})' - costs(:, i)';
-            benefit(:, i + 1) = benefits(:, i);
+        for i = 1:num_options
+            profit(:, i + 1)  = p * q.(elm_options{i})' - c(:, i)';
         end
     else
-        for i = 1:length(elm_option)
-            profit(:, i + 1) = p * q(:, :, i)' - costs(:, i)';
-            benefit(:, i + 1)  = benefits(:, i);
+        for i = 1:num_options
+            if ndims(q)>2
+                profit(:, i + 1) = p * q(:, :, i)' - c(:, i)';
+            else
+                profit(:, i + 1) = p * q' - c(:, i)';
+            end
         end
     end
     
@@ -23,12 +24,13 @@ function f = myfun_ES(p, q, costs, benefits, elm_option)
     [~, max_profit_col_idx] = max(profit, [], 2);
     
 	% Calculate benefits for each farmer under this option uptake
-    benefit_final = zeros(size(costs, 1), 1);
-    for i = 1:size(costs, 1)
-        benefit_final(i) = benefit(i, max_profit_col_idx(i));
-    end
+    b = [zeros(num_farmers,1) b];
+    b_chosen = b(sub2ind(size(b), (1:num_farmers)', max_profit_col_idx));
     
 	% Calculate total benefits, return negative for minimisation
-    f = -sum(benefit_final);
-
+    f = -sum(b_chosen);
+    
+    % fprintf('%s\n', strjoin(num2sepstr(p,'% 3.5f'), ' '));
+    % fprintf('%s\n', num2sepstr(f,'% 12.2f'));
+    
 end

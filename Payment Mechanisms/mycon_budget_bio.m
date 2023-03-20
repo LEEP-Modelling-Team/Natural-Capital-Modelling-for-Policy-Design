@@ -18,8 +18,13 @@ function [c, ceq] = mycon_budget_bio(p, q, costs, budget, elm_options, cnst_data
         end
     else
         for i = 1:Nq
-            profit(:, i + 1) = p * q(:, :, i)' - costs(:, i)';
-            spend(:, i + 1)  = p * q(:, :, i)';
+            if ndims(q)>2
+                profit(:, i + 1) = p * q(:, :, i)' - costs(:, i)';
+                spend(:, i + 1)  = p * q(:, :, i)';
+            else
+                profit(:, i + 1) = p * q' - costs(:, i)';
+                spend(:, i + 1)  = p * q';
+            end                        
         end
     end
     

@@ -1,22 +1,22 @@
-function uptake = myfun_uptake(p, ES, C, elm_option)
+function uptake = myfun_uptake(p, q, c, elm_option)
 
-    N  = length(C);
-    Nq = length(elm_option);
+    num_farmers = length(c);
+    num_options = length(elm_option);
 
     % Determine which option each farmer would prefer at these prices
-    profit  = zeros(N, Nq+1);
+    profit  = zeros(num_farmers, num_options+1);
     
     % Evaluate profit & cost for each option 
-    if isstruct(ES) 
-        for i = 1:Nq
-            profit(:, i + 1)  = p * ES.(elm_option{i})' - C(:, i)';
+    if isstruct(q) 
+        for i = 1:num_options
+            profit(:, i + 1)  = p * q.(elm_option{i})' - c(:, i)';
         end     
     else
-        if ndims(ES) == 2
-             profit(:, 2:Nq+1) = p .* ES - C;
+        if ndims(q) == 2
+             profit(:, 2:num_options+1) = p .* q - c;
         else
-            for i = 1:Nq
-                profit(:, i + 1) = p * ES(:, :, i)' - C(:, i)';
+            for i = 1:num_options
+                profit(:, i + 1) = p * q(:, :, i)' - c(:, i)';
             end
         end
     end
@@ -26,7 +26,7 @@ function uptake = myfun_uptake(p, ES, C, elm_option)
     [~, max_profit_col_idx] = max(profit, [], 2);
 
     % uptake
-    uptake = full(sparse(1:N, max_profit_col_idx, ones(N,1), N, Nq+1)); 
+    uptake = full(sparse(1:num_farmers, max_profit_col_idx, ones(num_farmers,1), num_farmers, num_options+1)); 
     
     % remove do-nothing option
     uptake = uptake(:,2:end);
