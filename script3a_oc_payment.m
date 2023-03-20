@@ -35,7 +35,8 @@ data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
 % ---------------
 data_year = 1;    
 sample_size = 'no';  % all data
-[b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
+[b, c, q, budget, lu_data, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
+        
 num_options = size(b,2);
 num_farmers = size(b,1);
 
@@ -65,7 +66,6 @@ if any(spgrp_chg < cnst_target)
    error('Failed to achieve biodiversity target'); 
 end
 
-
 % 4. Save Solution
 % ----------------
 solution.prices        = [];
@@ -79,8 +79,4 @@ solution.farm_benefits = benefits;
 solution.farm_payment  = farm_payment;
 solution.new2kid       = new2kid(uptake_ind);
 
-if bio_constraint > 0    
-    save(['solution_' biocnst_str '_' budget_str '_' payment_mechanism '.mat'], 'solution'); 
-else
-    save(['solution_' budget_str '_' payment_mechanism '.mat'], 'solution');     
-end
+save(['solution_' payment_mechanism '_' budget_str '.mat'], 'solution');     
