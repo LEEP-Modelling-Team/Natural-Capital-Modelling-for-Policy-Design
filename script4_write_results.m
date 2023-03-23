@@ -11,6 +11,9 @@ rng(23112010)
 payment_mechanisms = {'fr_env', 'fr_es', 'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'};
 unscaled_budget = 1e9;
 urban_pct_limit = 0.5;
+bio_constraint  = 0.15;  % 0 if no biodiversity constraint
+bio_as_prices   = false;  % only set to true if have a biodiversity const
+byparcel        = true;
 carbon_price_string = 'non_trade_central';
 drop_vars = {'habitat_non_use', 'biodiversity'};
 budget_str = [num2str(round(unscaled_budget/1e9)) 'bill'];
@@ -34,6 +37,7 @@ data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
 % Generated in script2_run_elm_options.m
 % Depends on carbon price
 load(data_path);
+num_cells_all = length(cell_info.new2kid);
 
 % Remove cells 
 % ------------
@@ -48,9 +52,6 @@ cell_remove_ind = or(cell_remove_ind, (cell_info.baseline_lcs.farm_ha < 1));
 cell_remove_ind = or(cell_remove_ind, (costs.arable_reversion_sng_noaccess(:,1) + costs.destocking_sng_noaccess(:,1) == 0)); 
 
 % Remove Cells
-cell_info.new2kid  = cell_info.new2kid(~cell_remove_ind);
-cell_info.ncells   = length(cell_info.new2kid);
-% benefits
 for k = 1:length(elm_options)
     elm_option_k = elm_options{k};
     benefits.(elm_option_k)             = benefits.(elm_option_k)(~cell_remove_ind,:);
@@ -61,48 +62,58 @@ for k = 1:length(elm_options)
     es_outs.(elm_option_k)              = es_outs.(elm_option_k)(~cell_remove_ind,:,:);
     env_outs.(elm_option_k)             = env_outs.(elm_option_k)(~cell_remove_ind,:,:);
     elm_ha.(elm_option_k)               = elm_ha.(elm_option_k)(~cell_remove_ind);
-end    
-    
+    biodiversity_constraints.(elm_option_k).data_20 = biodiversity_constraints.(elm_option_k).data_20(~cell_remove_ind, :);
+    biodiversity_constraints.(elm_option_k).data_30 = biodiversity_constraints.(elm_option_k).data_30(~cell_remove_ind, :);
+    biodiversity_constraints.(elm_option_k).data_40 = biodiversity_constraints.(elm_option_k).data_40(~cell_remove_ind, :);
+    biodiversity_constraints.(elm_option_k).data_50 = biodiversity_constraints.(elm_option_k).data_50(~cell_remove_ind, :);
+end  
+new2kid = cell_info.new2kid(~cell_remove_ind);
+num_cells = length(new2kid);    
+
+% Names of vars with quantity prices
+% ----------------------------------
+switch payment_mechanism
+    case 'fr_es'
+        vars_price = vars_es_outs;
+        quantities = es_outs;
+    case 'fr_env'
+        vars_price = vars_env_outs;
+        quantities = env_outs;
+    case {'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'}
+        vars_price = elm_options;
+        quantities = elm_ha;  
+end
+if bio_as_prices 
+   vars_price = [vars_price biodiversity_constraints.names_grp'];
+end 
+
 
 % Remove vars in 'drop_vars'
-% --------------------------
+% -------------------------- 
 if ~isempty(drop_vars)
 
     for var = drop_vars
 
-        % Remove from Environmental Outcomes
-        % ----------------------------------
-        [indvar, idxvar] = ismember(var, vars_env_outs);            
-        if indvar
-            % Remove from var list
-            vars_env_outs(idxvar) = [];
-            num_env_outs = num_env_outs - 1;
-            % Remove from quantities                
-            for k = 1:length(elm_options)                 
-                env_outs.(elm_options{k})(:,idxvar,:) = [];                
+        % Remove from Quantities
+        % ----------------------
+        if ~any(strcmp(payment_mechanism, {'fr_act', 'fr_act_pctl', 'fr_act_pctl_rnd', 'oc_pay', 'up_auc'}))
+            [indvar, idxvar] = ismember(var, vars_price);            
+            if indvar
+                % Remove from var list
+                vars_price(idxvar) = [];                                
+                % Remove from quantities                
+                for k = 1:length(elm_options)                 
+                    quantities.(elm_options{k})(:,idxvar,:) = [];
+                end
             end
         end
-        
-        % Remove from Ecosystem Services
-        % ------------------------------
-        [indvar, idxvar] = ismember(var, vars_es_outs);            
-        if indvar
-            % Remove from var list
-            vars_es_outs(idxvar) = [];  
-            num_es_outs = num_es_outs - 1;
-            % Remove from quantities                
-            for k = 1:length(elm_options)                 
-                es_outs.(elm_options{k})(:,idxvar,:) = [];
-            end
-        end        
 
         % Remove from Benefits
         % --------------------
         [indvar, idxvar] = ismember(var, vars_benefits);            
         if indvar   
             % Remove from benefits var list
-            vars_benefits(idxvar) = []; 
-            num_benefits = num_benefits - 1;
+            vars_benefits(idxvar) = [];                   
             % Remove from quantities
             for k = 1:length(elm_options) 
                 % Subtract away benefits for this var
@@ -117,14 +128,13 @@ if ~isempty(drop_vars)
     end        
 end
 
+cell_sample_ind = true(num_cells,1);
+
+
+
 
 % Preallocate arrays to store results
 % -----------------------------------
-
-nyears = 1;
-
-
-
 for i = 1:numel(payment_mechanisms)
     
     payment_mechanism = payment_mechanisms{i};

@@ -1,11 +1,7 @@
-function [b, c, q, budget, lu_data, cnst_data, cnst_target, elm_options, vars_price, new2kid] = load_data(num_sample, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year)
+function [b, c, q, hectares, budget, lu_data, cnst_data, cnst_target, elm_options, vars_price, new2kid] = load_data(num_sample, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year)
 
     % (1) Set up
     %  ==========
-    % Connect to database
-    % -------------------
-    server_flag = false;
-    conn = fcn_connect_database(server_flag);
 
     % Load ELM option results from .mat file
     % --------------------------------------
@@ -146,6 +142,7 @@ function [b, c, q, budget, lu_data, cnst_data, cnst_target, elm_options, vars_pr
     c = costs_year(cell_sample_ind, :);
     c = c .* markup; 
     for k = 1:num_elm_options
+        hectares.(elm_options{k})       = elm_ha.(elm_options{k})(cell_sample_ind, :);
         quantities.(elm_options{k})     = quantities.(elm_options{k})(cell_sample_ind, :);
         bio_quantities.(elm_options{k}) = biodiversity_constraints.(elm_options{k}).data_20(cell_sample_ind, :);
     end 
@@ -160,17 +157,23 @@ function [b, c, q, budget, lu_data, cnst_data, cnst_target, elm_options, vars_pr
         c = cell2pcl(c, elm_options); 
         for k = 1:num_elm_options
             if contains(elm_options{k}, 'arable')
+                hectares.(elm_options{k})       = [hectares.(elm_options{k});       zeros(size(hectares.(elm_options{k})))];
                 quantities.(elm_options{k})     = [quantities.(elm_options{k});     zeros(size(quantities.(elm_options{k})))];
                 bio_quantities.(elm_options{k}) = [bio_quantities.(elm_options{k}); zeros(size(bio_quantities.(elm_options{k})))];
             else
+                hectares.(elm_options{k})       = [zeros(size(hectares.(elm_options{k})));       hectares.(elm_options{k})];
                 quantities.(elm_options{k})     = [zeros(size(quantities.(elm_options{k})));     quantities.(elm_options{k})];
                 bio_quantities.(elm_options{k}) = [zeros(size(bio_quantities.(elm_options{k}))); bio_quantities.(elm_options{k})];
             end
-        end
+        end        
         lu_data   = cell2pcl(lu_data, elm_options);
         new2kid   = repmat(new2kid,2,1);
         num_cells = length(new2kid);
     end
+    
+    % Area
+    % ----
+    hectares  = struct2table(hectares);
 
     % Quantities: Including add biodiversity as a quantity to be priced
     % -----------------------------------------------------------------       

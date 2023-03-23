@@ -33,7 +33,7 @@ data_path = [data_folder, 'elm_data_', carbon_price_string, '.mat'];
 % ---------------
 data_year = 1;    
 sample_size = 'no';  % all data
-[b, c, q, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, data_year);
+[b, c, q, hectares, budget, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, data_year);
 num_prices  = length(price_vars);
 num_options = size(b,2);
 num_farmers = size(b,1);
@@ -91,6 +91,7 @@ solution.uptake        = uptake;
 solution.uptake_ind    = uptake_ind;
 solution.option_choice = option_choice;
 solution.new2kid       = new2kid(uptake_ind);
+solution.hectares      = hectares;
 solution.farm_costs    = costs;
 solution.farm_benefits = benefits;
 solution.farm_payment  = farm_payment;

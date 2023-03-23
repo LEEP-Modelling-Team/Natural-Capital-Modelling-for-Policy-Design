@@ -11,11 +11,11 @@ rng(23112010)
 
 % Model
 % -----
-payment_mechanism = 'fr_env';
+payment_mechanism = 'fr_es';
 unscaled_budget   = 1e9;
 urban_pct_limit   = 0.5;
 bio_constraint    = 0.15;  % 0 if no biodiversity constraint
-bio_as_prices     = true;  % only set to true if have a biodiversity const
+bio_as_prices     = false;  % only set to true if have a biodiversity const
 byparcel          = true;
 sample_size       = 5000;
 do_search_sample  = true;
@@ -56,7 +56,7 @@ if bio_constraint > 0
         % ---------
         data_year = 1;    
         sample_size = 'no';  % all data
-        [b, c, q, budget, lu_data, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
+        [b, c, q, hectares, budget, lu_data, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
         num_prices  = length(price_vars);
         num_options = size(b,2);
         num_farmers = size(b,1);
@@ -137,7 +137,7 @@ if bio_constraint > 0
     % -------------
     sample_size = 'no';  % all data
     data_year = 1;    
-    [b, c, q, budget, lu_data, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
+    [b, c, q, hectares, budget, lu_data, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
     num_farmers = size(q, 1);
     num_prices  = size(q, 2);
     num_options = size(q, 3);        
@@ -267,7 +267,7 @@ if do_search_sample
         % 2.2 Load new sample of data
         % ---------------------------
         data_year = 1;    % year in which scheme run 
-        [b, c, q, budget, lu_data, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
+        [b, c, q, hectares, budget, lu_data, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
         num_farmers = size(q, 1);
         num_prices  = size(q, 2);
         num_options = size(q, 3);
@@ -335,7 +335,7 @@ end
 % -------------
 sample_size = 'no';  % all data
 data_year = 1;    
-[b, c, q, budget, lu_data, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
+[b, c, q, hectares, budget, lu_data, cnst_data, cnst_target, elm_options, price_vars, new2kid] = load_data(sample_size, unscaled_budget, data_path, payment_mechanism, drop_vars, markup, urban_pct_limit, bio_constraint, bio_as_prices, byparcel, data_year);
 num_farmers = size(q, 1);
 num_prices  = size(q, 2);
 num_options = size(q, 3);
@@ -436,6 +436,7 @@ solution.uptake        = uptake;
 solution.uptake_ind    = uptake_ind;
 solution.option_choice = option_choice;
 solution.new2kid       = new2kid(uptake_ind);
+solution.hectares      = hectares;
 solution.farm_costs    = costs;
 solution.farm_benefits = benefits;
 solution.farm_payment  = farm_payment;
