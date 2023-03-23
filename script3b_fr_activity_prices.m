@@ -188,7 +188,7 @@ end
 
 % 3. MIP for Global Optimal Prices
 % --------------------------------
-cplex_options.time = 7200;
+cplex_options.time = 29000;
 cplex_options.logs = cplex_folder;
 
 if ~bio_as_prices 
